@@ -432,44 +432,68 @@ function M.spawnPal(senderCtx, args)
                 Role.ack(senderCtx, "spawn failed: no cheat manager")
                 return
             end
-            -- roster before, so the newcomer is identifiable afterwards
+            -- roster before, so newcomers are identifiable afterwards
             local before = {}
             for _, m in ipairs(FindAllOf("BP_MonsterBase_C") or {}) do
                 if m:IsValid() then before[m:GetFullName()] = true end
             end
             cm:SpawnMonster(FName(charId), level)
             Log(string.format("[probe-spawn] SpawnMonster %s lvl %d requested", charId, level))
-            -- give the actor a tick to exist, then fetch it to the player
-            local tries = 0
-            LoopAsync(250, function()
-                tries = tries + 1
-                local done = false
+            -- Watch for the newcomer OF THE REQUESTED SPECIES, then fetch it
+            -- once. First field test taught this loop three lessons the hard
+            -- way: (1) a flag set inside ExecuteInGameThread is NOT visible
+            -- to the LoopAsync return in the same pass (async race -> the
+            -- loop ran forever), so all state changes happen through `state`
+            -- and the loop only reads it; (2) without a species check the
+            -- diff grabs random natural spawns (the flying-sheep incident);
+            -- (3) every newcomer gets logged once, so a silent SpawnMonster
+            -- failure still tells us what DID appear instead.
+            local wanted = charId:lower()
+            local state = { finished = false, pending = false, tries = 0, seen = {} }
+            LoopAsync(300, function()
+                if state.finished then return true end
+                if state.pending then return false end
+                state.pending = true
                 ExecuteInGameThread(function()
-                    local newcomer = nil
-                    for _, m in ipairs(FindAllOf("BP_MonsterBase_C") or {}) do
-                        if m:IsValid() and not before[m:GetFullName()] then newcomer = m break end
-                    end
-                    if newcomer then
-                        done = true
-                        local player = FindFirstOf("PalPlayerCharacter")
-                        if player and player:IsValid() then
-                            local loc = player:K2_GetActorLocation()
-                            local fwd = player:GetActorForwardVector()
-                            local dest = { X = loc.X + fwd.X * 400, Y = loc.Y + fwd.Y * 400, Z = loc.Z + 150 }
-                            local spawnedAt = newcomer:K2_GetActorLocation()
-                            newcomer:K2_TeleportTo(dest, { Pitch = 0, Yaw = 0, Roll = 0 })
-                            Log(string.format("[probe-spawn] %s appeared at (%.0f, %.0f, %.0f) - teleported to player",
-                                charId, spawnedAt.X, spawnedAt.Y, spawnedAt.Z))
-                            Role.ack(senderCtx, string.format("%s lvl %d is in front of you (sphere it to own it)", charId, level))
+                    pcall(function()
+                        state.tries = state.tries + 1
+                        for _, m in ipairs(FindAllOf("BP_MonsterBase_C") or {}) do
+                            if m:IsValid() and not before[m:GetFullName()] then
+                                before[m:GetFullName()] = true -- inspect each newcomer once
+                                local id = "?"
+                                pcall(function()
+                                    id = m.CharacterParameterComponent:GetIndividualParameter():GetCharacterID():ToString()
+                                end)
+                                local at = m:K2_GetActorLocation()
+                                Log(string.format("[probe-spawn] newcomer %s at (%.0f, %.0f, %.0f)", id, at.X, at.Y, at.Z))
+                                if not state.finished and id:lower() == wanted then
+                                    local player = FindFirstOf("PalPlayerCharacter")
+                                    if player and player:IsValid() then
+                                        local loc = player:K2_GetActorLocation()
+                                        local fwd = player:GetActorForwardVector()
+                                        m:K2_TeleportTo({ X = loc.X + fwd.X * 400, Y = loc.Y + fwd.Y * 400, Z = loc.Z + 150 },
+                                            { Pitch = 0, Yaw = 0, Roll = 0 })
+                                        Log(string.format("[probe-spawn] %s fetched to player from (%.0f, %.0f, %.0f)",
+                                            id, at.X, at.Y, at.Z))
+                                        Role.ack(senderCtx, string.format("%s lvl %d is in front of you (sphere it to own it)", charId, level))
+                                        state.finished = true
+                                    end
+                                else
+                                    state.seen[#state.seen + 1] = id
+                                end
+                            end
                         end
-                    elseif tries >= 4 then
-                        done = true
-                        Log(string.format("[probe-spawn] NO new monster after %s - unknown CharacterID?", charId))
-                        Role.ack(senderCtx, string.format(
-                            "nothing spawned for '%s' - wrong CharacterID? (Foxparks=Kitsunebi; ids are the internal row names)", charId))
-                    end
+                        if not state.finished and state.tries >= 8 then
+                            state.finished = true
+                            local extras = #state.seen > 0 and (" (unrelated newcomers: " .. table.concat(state.seen, ", ") .. ")") or ""
+                            Log(string.format("[probe-spawn] no %s materialized in ~2.5s%s", charId, extras))
+                            Role.ack(senderCtx, string.format(
+                                "no %s appeared - SpawnMonster may not support this id, or ids are case-exact%s", charId, extras))
+                        end
+                    end)
+                    state.pending = false
                 end)
-                return done
+                return false
             end)
         end)
         if not suc then Log("[probe-spawn] FAIL: " .. tostring(e)) end
