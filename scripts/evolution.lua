@@ -2429,6 +2429,13 @@ function Evolution.init()
                 local okProbes, probes = pcall(require, "probes")
                 if okProbes and probes.becomePal then probes.becomePal(senderCtx, args) end
             end,
+            -- !pg moves: backfill the summoned pal's species moves up to its
+            -- level (evolved pals keep only their old form's kit otherwise)
+            moves = function(senderCtx)
+                if not Config.devMode then return end
+                local okProbes, probes = pcall(require, "probes")
+                if okProbes and probes.grantMoves then probes.grantMoves(senderCtx) end
+            end,
             xcond = function(senderCtx)
                 if not Config.devMode then return end
                 local okProbes, probes = pcall(require, "probes")
@@ -2612,7 +2619,7 @@ function Evolution.init()
                 Role.ack(senderCtx, I18n.msg("helpLine"))
             end,
         })
-        if okCmd then Log("Chat commands active (Palgenesis): !pg rollback | give | spawn | exp | time | free | kit | evolve") end
+        if okCmd then Log("Chat commands active (Palgenesis): !pg rollback | give | spawn | become | moves | exp | time | free | kit | evolve") end
     end)
 
     Log(string.format("Evolution core active: %s = check/confirm, chat: !pg rollback",

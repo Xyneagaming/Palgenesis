@@ -400,13 +400,13 @@ function M.giveItem(senderCtx, args)
     end)
 end
 
--- /palvolve spawn <CharacterID> [level]: wild spawn via the cheat manager
--- (the only pal-give path alive in retail; catch it after). SpawnMonster
--- returns void and says nothing about WHERE it spawned (first field test
--- dropped the pal out of sight), so this does not trust it: it diffs the
--- monster roster, teleports the newcomer right in front of the player, and
--- reports the measured position. No new actor within a second = the id is
--- wrong, and the ack says so instead of pretending.
+-- !pg spawn <CharacterID> [level]: spawn a wild pal via the REAL spawn
+-- machinery - UPalCharacterManager:SpawnNewCharacter, the BlueprintCallable
+-- the game's own systems use. (History: cm:SpawnMonster was attempt v1 and
+-- is confirmed dead in retail - clean call, nothing materializes.) The init
+-- struct is minimal (id, level, gender, mid talents, non-zero HP); the
+-- callback argument is tried as nil/{}/0 in order with every result logged,
+-- so one field run tells us exactly what the Lua bridge accepts.
 local SPAWN_ALIASES = {
     foxparks = "Kitsunebi", foxsparks = "Kitsunebi",
     pengullet = "Penguin", penking = "CaptainPenguin",
@@ -417,19 +417,24 @@ function M.spawnPal(senderCtx, args)
     local charId = args and args[1]
     if not charId then Role.ack(senderCtx, "usage: !pg spawn <CharacterID> [level]") return end
     charId = SPAWN_ALIASES[charId:lower()] or charId
+    local okCfg, cfg = pcall(require, "config")
+    if okCfg and cfg.map then
+        local lower = charId:lower()
+        for _, p in ipairs(cfg.map) do
+            if p.from and p.from:lower() == lower then charId = p.from break end
+            if p.to and p.to:lower() == lower then charId = p.to break end
+        end
+    end
     local level = tonumber(args and args[2]) or 10
     ExecuteInGameThread(function()
         local suc, e = pcall(function()
-            local _, pc, why = localInv()
-            if not pc then Log("[probe-spawn] " .. tostring(why)) return end
-            local cm = pc.CheatManager
-            if not (cm and cm:IsValid()) then
-                pcall(function() pc:EnableCheats() end)
-                cm = pc.CheatManager
-            end
-            if not (cm and cm:IsValid()) then
-                Log("[probe-spawn] no CheatManager (even after EnableCheats)")
-                Role.ack(senderCtx, "spawn failed: no cheat manager")
+            local player = FindFirstOf("PalPlayerCharacter")
+            if not (player and player:IsValid()) then Log("[probe-spawn] no player") return end
+            local util = StaticFindObject("/Script/Pal.Default__PalUtility")
+            local charman = util:GetCharacterManager(player)
+            if not (charman and charman:IsValid()) then
+                Log("[probe-spawn] no CharacterManager")
+                Role.ack(senderCtx, "spawn failed: no character manager")
                 return
             end
             -- roster before, so newcomers are identifiable afterwards
@@ -437,8 +442,51 @@ function M.spawnPal(senderCtx, args)
             for _, m in ipairs(FindAllOf("BP_MonsterBase_C") or {}) do
                 if m:IsValid() then before[m:GetFullName()] = true end
             end
-            cm:SpawnMonster(FName(charId), level)
-            Log(string.format("[probe-spawn] SpawnMonster %s lvl %d requested", charId, level))
+            local loc = player:K2_GetActorLocation()
+            local fwd = player:GetActorForwardVector()
+            -- HP is fixed-point (x1000); rough species-agnostic pool, the
+            -- catch flow rewrites real stats on capture anyway
+            local hp = 1000 * (100 + 25 * level)
+            local init = {
+                CharacterID = FName(charId),
+                Gender = 1,
+                Level = level,
+                Talent_HP = 50, Talent_Melee = 50, Talent_Shot = 50, Talent_Defense = 50,
+                FullStomach = 150.0,
+                Hp = { Value = hp },
+                MaxHP = { Value = hp },
+            }
+            local spawnParam = {
+                SpawnLocation = { X = loc.X + fwd.X * 500, Y = loc.Y + fwd.Y * 500, Z = loc.Z + 100 },
+                SpawnRotation = { Pitch = 0, Yaw = 0, Roll = 0 },
+                SpawnScale = { X = 1, Y = 1, Z = 1 },
+                SpawnCollisionHandlingOverride = 1, -- AdjustIfPossibleButAlwaysSpawn
+                bAlwaysRelevant = false,
+                bNeedAdjustToFloor = true,
+                AdjustUpOffset = 50.0,
+                bAdjustShortRayLength = false,
+                bStartAsInactivePalCharacter = false,
+            }
+            -- delegate-argument ladder: UE4SS's tolerance for BlueprintCallable
+            -- delegate params is undocumented - try the candidates and log each
+            local spawned = false
+            for _, cbKind in ipairs({ "nil", "emptytable", "zero" }) do
+                local okCall, errCall = pcall(function()
+                    local handle
+                    if cbKind == "nil" then handle = charman:SpawnNewCharacter(init, spawnParam, nil)
+                    elseif cbKind == "emptytable" then handle = charman:SpawnNewCharacter(init, spawnParam, {})
+                    else handle = charman:SpawnNewCharacter(init, spawnParam, 0) end
+                    Log(string.format("[probe-spawn] SpawnNewCharacter cb=%s handle=%s valid=%s",
+                        cbKind, tostring(handle), tostring(handle and handle.IsValid and handle:IsValid())))
+                end)
+                if okCall then spawned = true break end
+                Log(string.format("[probe-spawn] SpawnNewCharacter cb=%s REJECTED: %s", cbKind, tostring(errCall)))
+            end
+            if not spawned then
+                Role.ack(senderCtx, "SpawnNewCharacter rejected every delegate form - log has the errors; use !pg become meanwhile")
+                return
+            end
+            Log(string.format("[probe-spawn] SpawnNewCharacter %s lvl %d requested", charId, level))
             -- Watch for the newcomer OF THE REQUESTED SPECIES, then fetch it
             -- once. First field test taught this loop three lessons the hard
             -- way: (1) a flag set inside ExecuteInGameThread is NOT visible
@@ -488,7 +536,7 @@ function M.spawnPal(senderCtx, args)
                             local extras = #state.seen > 0 and (" (unrelated newcomers: " .. table.concat(state.seen, ", ") .. ")") or ""
                             Log(string.format("[probe-spawn] no %s materialized in ~2.5s%s", charId, extras))
                             Role.ack(senderCtx, string.format(
-                                "no %s appeared - SpawnMonster looks dead in retail. Use: !pg become %s (morphs nearest wild pal, then sphere it)%s", charId, charId, extras))
+                                "call accepted but no %s materialized - see log. Fallback: !pg become %s (morphs nearest wild pal, then sphere it)%s", charId, charId, extras))
                         end
                     end)
                     state.pending = false
@@ -1123,6 +1171,59 @@ bindProbeKey("BACKSPACE", "probe-finale-run", function()
         Log(string.format("[probe-finale-run] FAIL: %s", tostring(msg)))
     end
 end)
+
+-- !pg moves: grant the SUMMONED pal its current species' level-up moves up to
+-- its level (an evolved pal keeps only its old form's kit - the game grants
+-- species moves solely when a level threshold is CROSSED, so the new form's
+-- low-level moves never backfill). Mastery is written into the save arrays
+-- (no public AddMasteredWaza exists); equipping uses the public AddEquipWaza.
+-- Defined after conditionCtx so the local is in lexical scope.
+function M.grantMoves(senderCtx)
+    local Role = require("role")
+    ExecuteInGameThread(function()
+        local suc, e = pcall(function()
+            local ctx, why = conditionCtx()
+            if not ctx then
+                Role.ack(senderCtx, "summon the pal first (" .. tostring(why) .. ")")
+                return
+            end
+            local util = StaticFindObject("/Script/Pal.Default__PalUtility")
+            local db = util:GetWazaDatabase(ctx.actor)
+            if not (db and db:IsValid()) then Log("[probe-moves] no waza database") return end
+            local id = ctx.param:GetCharacterID()
+            local lvl = ctx.param:GetLevel()
+            local out = {}
+            db:GetMasterrableWaza_BetweenLevel(id, 1, lvl, out)
+            local granted, equipped, failed = 0, 0, 0
+            for waza, _ in pairs(out) do
+                local w = waza
+                if type(w) == "userdata" then pcall(function() w = w:get() end) end
+                local has = false
+                pcall(function() has = ctx.param:HasMasteredWaza(w) end)
+                if not has then
+                    local okM = pcall(function()
+                        local arr = ctx.param.SaveParameter.MasteredWaza
+                        arr[#arr + 1] = w
+                        local arr2 = ctx.param.SaveParameterMirror.MasteredWaza
+                        arr2[#arr2 + 1] = w
+                    end)
+                    if okM then granted = granted + 1 else failed = failed + 1 end
+                    pcall(function()
+                        if #ctx.param:GetEquipWaza() < 3 then
+                            ctx.param:AddEquipWaza(w)
+                            equipped = equipped + 1
+                        end
+                    end)
+                end
+            end
+            Log(string.format("[probe-moves] %s lvl %d: mastered +%d, equipped +%d, failed %d",
+                id:ToString(), lvl, granted, equipped, failed))
+            Role.ack(senderCtx, string.format(
+                "moves: +%d mastered, +%d equipped, %d failed - recall and resummon to see them", granted, equipped, failed))
+        end)
+        if not suc then Log("[probe-moves] FAIL: " .. tostring(e)) end
+    end)
+end
 
 Log(string.format("Probes active: F3 revert(own), F4 arm radial probes, F5 overlay, F6 VFX, F7 morph FX bases, F8 fanfare, F9 freeze, F10 give EXP, END free mode, test kit on %s, conditions on HOME/PAGE_UP/PAGE_DOWN, NUM7 day/night, NUM8 status cycle, F1 finale assets, BACKSPACE full evolution run (random target, 12 stages), chat !pg free|kit|fx (Palgenesis)",
     Key.INS and "INSERT" or "POS1"))
