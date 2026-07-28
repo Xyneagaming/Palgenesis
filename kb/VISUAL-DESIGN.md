@@ -3,7 +3,7 @@
 Creature-design craft for evolved forms. Load before any concept, texture, or model pass.
 Sibling of the vault-wide reference-first rule: gather refs BEFORE authoring.
 
-## Sugimori-school core [CONFIRMED — sourced interviews]
+## Sugimori-school core [CONFIRMED - sourced interviews]
 
 1. **Silhouette first**: the design must read as a black shape (Hydreigon kept a
    many-headed silhouette with one head). (https://shmuplations.com/pokemon/,
@@ -11,7 +11,7 @@ Sibling of the vault-wide reference-first rule: gather refs BEFORE authoring.
 2. **1 main color + 1-2 accents; palette communicates element** (Pikachu is yellow because
    electricity is).
 3. **Animal x one concept**, not three (Zoroark = kitsune x illusionist).
-4. **Simple enough to symbolize** — drawable from memory.
+4. **Simple enough to symbolize** - drawable from memory.
 5. **"Keep the balance"**: deliberately add something uncool to anything too cool; a
    humanizing flaw beats perfection. (https://www.nintendolife.com/news/2018/07/ken_sugimori_wants_pokemon_designs_to_be_as_memorable_as_possible)
 6. **Design the apex form first, derive the babies** (Ohmura's workflow).
@@ -37,10 +37,10 @@ To read as Pocketpair, not Pokemon-pasted:
   lives in silhouette tufts, not painted texture.
 - Saturation high, cream/white ventral fields, even on dark pals.
 - Every pal has one goofy touch (Pocketpair shares Sugimori's balance rule).
-- 1.0 redesigns pushed pals rounder/less humanoid — that's the house instinct.
+- 1.0 redesigns pushed pals rounder/less humanoid - that's the house instinct.
 - Variant convention [CONFIRMED]: same mesh + palette re-theme + element swap, suffix-coded
   (Cryst/Ignis/Lux/Noct/Terra/Aqua/Gild). An EVOLUTION must change silhouette too, or it
-  reads as a cheap B-variant — new-mesh-with-motif-carryover is exactly our gap.
+  reads as a cheap B-variant - new-mesh-with-motif-carryover is exactly our gap.
 
 ## Dark-creature palette conventions [COMMUNITY]
 
@@ -50,7 +50,7 @@ jewel accent. Palworld codes Dark as violet-black base + magenta/violet glow (Ka
 family). Night-creature cross-genre: bioluminescent markings as the readable feature; eyes
 brightest point; wisps suggested by fur shapes, never particles (3D constraint below).
 
-## Meshy/3D production constraints [CONFIRMED — Meshy docs]
+## Meshy/3D production constraints [CONFIRMED - Meshy docs]
 
 - Input: single clean 3/4 or front view, plain background, strong contrast; multi-view mode
   (front/side/back orthos) for back fidelity.
@@ -67,7 +67,7 @@ brightest point; wisps suggested by fur shapes, never particles (3D constraint b
 
 Same animal, same silhouette, new cultural/biome anchor, new palette, ONE new physical
 feature (Alolan Ninetales, Hisuian Arcanine). **Write the one-line habitat story before
-drawing** — it disciplines every choice.
+drawing** - it disciplines every choice.
 
 ## The eight-point checklist (every evolved form passes all)
 
@@ -83,9 +83,9 @@ drawing** — it disciplines every choice.
 7. 3D constraints baked into the concept sheet.
 8. One-line habitat/lore anchor written first.
 
-## Foxgloam brief [PROPOSAL — ratify with Sayber before the concept pass]
+## Foxgloam brief [PROPOSAL - ratify with Sayber before the concept pass]
 
-1. **Concept**: Foxparks grown into a twilight kitsune-adolescent — the campfire that
+1. **Concept**: Foxparks grown into a twilight kitsune-adolescent - the campfire that
    burned down to embers and learned to move in the dark. Rhymes with the Noct convention.
 2. **Silhouette**: quadruped, ~1.6-1.8x Foxparks' mass, longer legs/neck (kit->adolescent),
    swept-back ears, one thick tapered tail (save multi-tail for a later stage).

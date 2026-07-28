@@ -30,11 +30,11 @@ Derived locks (from the research, adopted as law unless Sayber overturns):
 
 ## Epistemic tags
 
-- `[CONFIRMED]` — verifiable game data, official docs, or read-from-source.
-- `[FIELD]` — proven in OUR harness/game (strongest tag; dated).
-- `[COMMUNITY]` — widely-replicated community analysis/datamine.
-- `[INFERENCE]` — synthesis; plausible, unverified.
-- `[PROPOSAL]` — our own numbers awaiting Sayber's feel pass.
+- `[CONFIRMED]` - verifiable game data, official docs, or read-from-source.
+- `[FIELD]` - proven in OUR harness/game (strongest tag; dated).
+- `[COMMUNITY]` - widely-replicated community analysis/datamine.
+- `[INFERENCE]` - synthesis; plausible, unverified.
+- `[PROPOSAL]` - our own numbers awaiting Sayber's feel pass.
 
 Any number that gates a ratified decision must be `[CONFIRMED]` or `[FIELD]`. Disputed
 values live in [VERIFY-LEDGER.md](VERIFY-LEDGER.md) with an in-engine test each; do not

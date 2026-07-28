@@ -31,14 +31,14 @@ Level rules are written as fractions of the live level cap (pin the cap via VERI
   expressed by the creature (Inkay passes, Runerigus fails), effort proportional to payoff
   (Crobat redeems Zubat's friendship tax).** Hidden, silently-resetting counters are the
   documented worst practice (the 1,000-step walkers).
-- [COMMUNITY] **No trade-evolutions** — the single strongest community consensus found; in a
+- [COMMUNITY] **No trade-evolutions** - the single strongest community consensus found; in a
   mostly-solo/coop game convert that slot to rare-item, location, or sink-cost triggers.
 - [CONFIRMED] Palvolve's condition vocabulary already covers the good methods: day/night,
   inDesert/inWater/inCave/inSanctuary, status, knowsMove:<Element>, inParty:<Species>,
   trustRank, ivTotal/ivEach, playerLevel, negation. **RULE: compose gates from this
   vocabulary before inventing new condition types.**
 - [CONFIRMED] Cassette Beasts' remaster model: evolution triggers as a **player-confirmed
-  ceremony** at the moment conditions are met — no accidental or missed evolutions, and the
+  ceremony** at the moment conditions are met - no accidental or missed evolutions, and the
   natural place to present a branch choice. Palvolve's manual trigger already behaves this
   way; keep it. (https://wiki.cassettebeasts.com/wiki/Fusion)
 
@@ -56,10 +56,10 @@ Level rules are written as fractions of the live level cap (pin the cap via VERI
   uniformly; signature lines pivot, concentrating the jump in the stats the final kit uses.**
 - [CONFIRMED] Lateral evolutions are legal: Scyther->Scizor is 500->500, pure
   redistribution. **RULE: every evolution is a net win in some legible dimension, but not
-  strictly better — give mid-stages an Eviolite-style reason to exist so "when do I evolve"
+  strictly better - give mid-stages an Eviolite-style reason to exist so "when do I evolve"
   is a real decision.**
 - [INFERENCE] When NOT to evolve a species: the design is already complete (apex/legendary
-  bodies), the niche IS the pre-evolution, or the story is done — a third stage bolted onto
+  bodies), the niche IS the pre-evolution, or the story is done - a third stage bolted onto
   a finished two-beat arc is where "it just got bigger" criticism lives (Dudunsparce,
   Maushold).
 
@@ -67,7 +67,7 @@ Level rules are written as fractions of the live level cap (pin the cap via VERI
 
 - [CONFIRMED] Branch condition taxonomy: player choice (Eevee stones, Applin items),
   trained-stat (Tyrogue: Atk vs Def at the threshold), gender+choice (Kirlia/Snorunt),
-  hidden random (Wurmple — the resented kind).
+  hidden random (Wurmple - the resented kind).
   (https://bulbapedia.bulbagarden.net/wiki/List_of_Pokemon_with_branched_Evolutions)
 - **RULE (locked): branches are choices, never dice.** Reachable deliberately, legible
   before the point of no return, both sides usable.
@@ -82,13 +82,13 @@ Level rules are written as fractions of the live level cap (pin the cap via VERI
 
 ## Adjacent-genre steals
 
-- [CONFIRMED] **Digimon (Cyber Sleuth):** evolution as a reversible optimization loop —
+- [CONFIRMED] **Digimon (Cyber Sleuth):** evolution as a reversible optimization loop -
   de-digivolving earns ABI which unlocks deeper branches; the tree is explorable on one
   creature. Palvolve's rollback is our hook for this; see ECONOMY-DESIGN for the
   rollback-farming guard. (https://gamerant.com/digimon-story-cyber-sleuth-hackers-memory-get-ABI-tips-guide/)
 - [CONFIRMED] **SMT fusion:** recipe-as-puzzle top-end chase, at the cost of attachment.
   Steal the recipe feel for rare evolutions (multi-condition gates); keep same-individual
-  continuity — the condenser already occupies the "sacrifice copies" niche.
+  continuity - the condenser already occupies the "sacrifice copies" niche.
 - [INFERENCE] **Regional variants** (Alolan/Galarian grammar) are the cheap sibling of
   evolution: same silhouette, element re-theme, biome-grounded story. Palvolve's 87 stock
   elemental adaptations are exactly this; our biome-flavored forms extend it.

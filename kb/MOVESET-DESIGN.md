@@ -3,7 +3,7 @@
 Learnset pacing and the waza economy. Load before authoring any AbilitiesByLevel list or
 custom skill. **Datamine first: wikis mix pre-1.0 and 1.0 skill values (Fire Ball was
 150/55s, is 600/30s). Read live DT_WazaDataTable numbers via the harness before numbering
-anything** (we already read DT rows via GetDataTableRowNames — see selftest.lua).
+anything** (we already read DT rows via GetDataTableRowNames - see selftest.lua).
 
 ## Palworld's system [CONFIRMED]
 
@@ -29,12 +29,12 @@ Big skills are taxed by lockout time and cast animation, not by ratio.
 staggered CTs) lands ~3,500-4,000 total power/minute.** That is the vanilla ceiling to
 balance custom kits against. Three same-CT nukes waste uptime; basics alone yield ~8 power/s.
 
-## Pokemon patterns worth porting [CONFIRMED — Bulbapedia/pokemondb]
+## Pokemon patterns worth porting [CONFIRMED - Bulbapedia/pokemondb]
 
 - **Evolved forms re-learn shared moves LATER** (Charmander gets Flare Blitz at 40,
   Charizard at 62; the delay widens with move value). Evolution trades pacing for stats.
 - **Evolution moves (Gen 7+):** a move granted at the instant of evolving (Garchomp->Crunch)
-  — the transition itself delivers a kit payoff. The single most portable idea.
+  - the transition itself delivers a kit payoff. The single most portable idea.
 - **Stone-evolution learnset walls** (Wigglytuff): when evolution is cheap/instant, the dead
   learnset is the counterweight that makes timing a decision.
 - Signature tightness: species-exclusive (mechanical thesis, e.g. Dragon Darts) >
@@ -45,7 +45,7 @@ balance custom kits against. Three same-CT nukes waste uptime; basics alone yiel
 ## Field facts (ours) [FIELD 2026-07-28]
 
 - **Learned skills persist through Palvolve's swap; the new species' level moves are NOT
-  granted retroactively** (the game grants moves only when a threshold is crossed — this is
+  granted retroactively** (the game grants moves only when a threshold is crossed - this is
   why `!pg moves` exists). So the "delay evolution to finish the pre-evo learnset" lever and
   the evolution-move pattern (grant at/below the evolution level) both work in our engine.
 - Waza enum lookup from Lua works (OutMap unwrap; DarkBall = enum 159).
