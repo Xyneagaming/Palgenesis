@@ -33,7 +33,8 @@ local STATE_FILE = (function()
             if root then path = root .. "\\palvolve_state.lua" end
         end
     end)
-    return path or "ue4ss\\Mods\\Palvolve\\palvolve_state.lua"
+    -- Palgenesis: game-side folder is Mods\Palgenesis (deploy-time rename)
+    return path or "ue4ss\\Mods\\Palgenesis\\palvolve_state.lua"
 end)()
 
 local function Log(msg)
@@ -2397,7 +2398,7 @@ function Evolution.init()
                 if not Config.devMode then return end
                 local target = args and args[1]
                 if not target then
-                    Role.ack(senderCtx, "usage: /palvolve evolve <CharacterID>")
+                    Role.ack(senderCtx, "usage: !pg evolve <CharacterID>")
                     return
                 end
                 local okProbes, probes = pcall(require, "probes")
@@ -2588,10 +2589,10 @@ function Evolution.init()
                 Role.ack(senderCtx, I18n.msg("helpLine"))
             end,
         })
-        if okCmd then Log("Chat commands active: /palvolve rollback") end
+        if okCmd then Log("Chat commands active (Palgenesis): !pg rollback | give | spawn | exp | time | free | kit | evolve") end
     end)
 
-    Log(string.format("Evolution core active: %s = check/confirm, chat: /palvolve rollback",
+    Log(string.format("Evolution core active: %s = check/confirm, chat: !pg rollback",
         Config.confirmKey))
 end
 

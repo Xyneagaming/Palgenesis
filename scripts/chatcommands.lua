@@ -9,7 +9,11 @@ local Role = require("role")
 
 local ChatCommands = {}
 
-local PREFIX = "/palvolve"
+-- Palgenesis (Nyx fork): "!" prefixes, because the game's own chat parser
+-- intercepts every "/" message and spams "You are not an Admin" in reply.
+-- The legacy /palvolve prefix stays accepted (muscle memory, upstream docs);
+-- it just keeps the admin noise.
+local PREFIXES = { "!pg", "!palgenesis", "/palvolve" }
 
 -- resolves the sending player's context from the chatting PlayerState
 local function senderCtxOf(ps)
@@ -34,7 +38,15 @@ function ChatCommands.init(handlers)
                 pcall(function() text = msgParam:get():ToString() end)
                 if type(text) ~= "string" then return end
                 local lower = text:lower()
-                if lower:sub(1, #PREFIX) ~= PREFIX then return end
+                local matched = nil
+                for _, p in ipairs(PREFIXES) do
+                    -- prefix must be the whole first token ("!pg spawn", not "!pgs")
+                    if lower == p or lower:sub(1, #p + 1) == (p .. " ") then
+                        matched = p
+                        break
+                    end
+                end
+                if not matched then return end
                 local ctx = senderCtxOf(self:get())
                 if not ctx then return end
                 local sub = lower:match("^%S+%s+(%S+)") or "help"

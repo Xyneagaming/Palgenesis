@@ -19,6 +19,10 @@ do
         Log("version " .. tostring(cfg.modVersion)
             .. " (game build " .. tostring(cfg.gameBuild) .. ")")
     end
+    -- Palgenesis banner: this is the Nyx/Sayber fork, running under its own
+    -- name. Base engine and internal ids remain Palvolve (GPL-3.0, DooDesch)
+    -- for save compatibility and clean upstream merges. Chat prefix: !pg
+    Log("running as Palgenesis (household fork; base Palvolve, GPL-3.0 DooDesch; chat prefix !pg)")
 end
 
 -- Role detection: UI modules and their retry pollers must not run on a

@@ -175,7 +175,7 @@ function M.toggleFreeMode()
             savedCosts = { stone = cfg.requireStone, costs = cfg.costs.enabled }
             cfg.requireStone = false
             cfg.costs.enabled = false
-            Log("[probe-costs] FREE MODE ON - evolutions cost nothing (END or /palvolve free toggles back)")
+            Log("[probe-costs] FREE MODE ON - evolutions cost nothing (END or !pg free toggles back)")
         else
             cfg.requireStone = savedCosts.stone
             cfg.costs.enabled = savedCosts.costs
@@ -386,7 +386,7 @@ end
 function M.giveItem(senderCtx, args)
     local Role = require("role")
     local itemId = args and args[1]
-    if not itemId then Role.ack(senderCtx, "usage: /palvolve give <ItemId> [count]") return end
+    if not itemId then Role.ack(senderCtx, "usage: !pg give <ItemId> [count]") return end
     local count = tonumber(args and args[2]) or 1
     ExecuteInGameThread(function()
         local suc, e = pcall(function()
@@ -415,7 +415,7 @@ local SPAWN_ALIASES = {
 function M.spawnPal(senderCtx, args)
     local Role = require("role")
     local charId = args and args[1]
-    if not charId then Role.ack(senderCtx, "usage: /palvolve spawn <CharacterID> [level]") return end
+    if not charId then Role.ack(senderCtx, "usage: !pg spawn <CharacterID> [level]") return end
     charId = SPAWN_ALIASES[charId:lower()] or charId
     local level = tonumber(args and args[2]) or 10
     ExecuteInGameThread(function()
@@ -1046,7 +1046,7 @@ bindProbeKey("BACKSPACE", "probe-finale-run", function()
     end
 end)
 
-Log(string.format("Probes active: F3 revert(own), F4 arm radial probes, F5 overlay, F6 VFX, F7 morph FX bases, F8 fanfare, F9 freeze, F10 give EXP, END free mode, test kit on %s, conditions on HOME/PAGE_UP/PAGE_DOWN, NUM7 day/night, NUM8 status cycle, F1 finale assets, BACKSPACE full evolution run (random target, 12 stages), chat /palvolve free|kit|fx",
+Log(string.format("Probes active: F3 revert(own), F4 arm radial probes, F5 overlay, F6 VFX, F7 morph FX bases, F8 fanfare, F9 freeze, F10 give EXP, END free mode, test kit on %s, conditions on HOME/PAGE_UP/PAGE_DOWN, NUM7 day/night, NUM8 status cycle, F1 finale assets, BACKSPACE full evolution run (random target, 12 stages), chat !pg free|kit|fx (Palgenesis)",
     Key.INS and "INSERT" or "POS1"))
 
 return M
