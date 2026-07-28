@@ -139,6 +139,118 @@ namespace
         return true;
     }
 
+    // ---------------------------------------------------------------- Palgenesis spawn
+    // Writes one member INSIDE a struct-typed parameter of the buffer (the
+    // FParamBuffer only addresses top-level params). Offsets come from the
+    // live property chain, same discipline as everywhere else in this file.
+    auto set_struct_member(FParamBuffer& Buf, const wchar_t* StructParam, const wchar_t* Member,
+                           const void* Src, size_t Bytes) -> bool
+    {
+        auto* Prop = CastField<FStructProperty>(Buf.Find(StructParam));
+        if (!Prop) return false;
+        auto* Struct = Prop->GetStruct();
+        if (!Struct) return false;
+        for (FProperty* M : Struct->ForEachProperty())
+        {
+            if (M->GetName() != Member) continue;
+            if (static_cast<size_t>(M->GetSize()) < Bytes) return false;
+            std::memcpy(Buf.Data.data() + Prop->GetOffset_Internal() + M->GetOffset_Internal(), Src, Bytes);
+            return true;
+        }
+        return false;
+    }
+
+    // Spawns a wild pal through UPalCharacterManager::SpawnNewCharacter - the
+    // API the game's own systems use. This lives natively because the Lua
+    // bridge cannot pass the trailing delegate parameter at all (nil/{}/0
+    // each fail-fast the process, 0xC0000409; measured on the headless
+    // harness 2026-07-28). Natively the delegate simply stays zeroed in the
+    // parameter buffer, which is an ordinary unbound delegate.
+    auto spawn_character(const std::wstring& CharId, int Level, double X, double Y, double Z,
+                         std::wstring& OutMsg) -> bool
+    {
+        auto* Ctx = g_world_context.load();
+        if (!Ctx)
+        {
+            OutMsg = STR("no world context (authority only, world not up)");
+            return false;
+        }
+        auto* Utility = UObjectGlobals::StaticFindObject<UObject*>(nullptr, nullptr, STR("/Script/Pal.Default__PalUtility"));
+        auto* GetMgrFn = find_fn(STR("/Script/Pal.PalUtility:GetCharacterManager"));
+        if (!Utility || !GetMgrFn)
+        {
+            OutMsg = STR("PalUtility/GetCharacterManager not found (game patch?)");
+            return false;
+        }
+        FParamBuffer G{GetMgrFn};
+        if (!G.Set<UObject*>(STR("WorldContextObject"), Ctx))
+        {
+            OutMsg = STR("GetCharacterManager has an unexpected signature");
+            return false;
+        }
+        G.Call(Utility);
+        auto* Manager = G.Get<UObject*>(STR("ReturnValue"));
+        if (!Manager)
+        {
+            OutMsg = STR("no character manager on this world");
+            return false;
+        }
+
+        auto* SpawnFn = find_fn(STR("/Script/Pal.PalCharacterManager:SpawnNewCharacter"));
+        if (!SpawnFn)
+        {
+            OutMsg = STR("SpawnNewCharacter not found (game patch?)");
+            return false;
+        }
+        FParamBuffer P{SpawnFn};
+
+        FName CharName(CharId, FNAME_Add);
+        const uint8 Gender = 1;                 // EPalGenderType::Male
+        const uint8 LevelByte = static_cast<uint8>(Level < 1 ? 1 : (Level > 60 ? 60 : Level));
+        const uint8 Talent = 50;
+        const float Stomach = 150.0f;
+        const int64 HpFixed = static_cast<int64>(1000) * (100 + 25 * LevelByte);
+
+        bool bInit = true;
+        bInit &= set_struct_member(P, STR("InitParameter"), STR("CharacterID"), &CharName, sizeof(FName));
+        bInit &= set_struct_member(P, STR("InitParameter"), STR("Gender"), &Gender, sizeof(uint8));
+        bInit &= set_struct_member(P, STR("InitParameter"), STR("Level"), &LevelByte, sizeof(uint8));
+        set_struct_member(P, STR("InitParameter"), STR("Talent_HP"), &Talent, sizeof(uint8));
+        set_struct_member(P, STR("InitParameter"), STR("Talent_Melee"), &Talent, sizeof(uint8));
+        set_struct_member(P, STR("InitParameter"), STR("Talent_Shot"), &Talent, sizeof(uint8));
+        set_struct_member(P, STR("InitParameter"), STR("Talent_Defense"), &Talent, sizeof(uint8));
+        set_struct_member(P, STR("InitParameter"), STR("FullStomach"), &Stomach, sizeof(float));
+        set_struct_member(P, STR("InitParameter"), STR("Hp"), &HpFixed, sizeof(int64));
+        set_struct_member(P, STR("InitParameter"), STR("MaxHP"), &HpFixed, sizeof(int64));
+
+        const double Loc[3] = {X, Y, Z};
+        const double Scale[3] = {1.0, 1.0, 1.0};
+        const uint8 CollisionOverride = 1;      // AdjustIfPossibleButAlwaysSpawn
+        const uint8 True8 = 1;
+        const float AdjustUp = 100.0f;
+        bInit &= set_struct_member(P, STR("SpawnParameter"), STR("SpawnLocation"), Loc, sizeof(Loc));
+        set_struct_member(P, STR("SpawnParameter"), STR("SpawnScale"), Scale, sizeof(Scale));
+        set_struct_member(P, STR("SpawnParameter"), STR("SpawnCollisionHandlingOverride"), &CollisionOverride, sizeof(uint8));
+        set_struct_member(P, STR("SpawnParameter"), STR("bNeedAdjustToFloor"), &True8, sizeof(uint8));
+        set_struct_member(P, STR("SpawnParameter"), STR("AdjustUpOffset"), &AdjustUp, sizeof(float));
+        // NetworkOwner/Owner/Name/ControllerClass/spawnCallback stay zeroed:
+        // null owners, name None, default controller, unbound delegate.
+
+        if (!bInit)
+        {
+            OutMsg = STR("save/spawn parameter layout changed (game patch?) - refusing a garbage spawn");
+            return false;
+        }
+
+        P.Call(Manager);
+        auto* Handle = P.Get<UObject*>(STR("ReturnValue"));
+        OutMsg = Handle ? (STR("spawn requested, handle ") + Handle->GetName())
+                        : STR("spawn requested (no handle returned - watch the roster)");
+        Output::send<LogLevel::Normal>(STR("[PalvolveNative] PalgenesisSpawn {} lvl {} at ({}, {}, {}): {}\n"),
+                                       CharId, LevelByte, X, Y, Z, OutMsg);
+        return true;
+    }
+
     auto guid_string(const void* Guid) -> std::wstring
     {
         const auto* P = static_cast<const uint32*>(Guid);
@@ -438,7 +550,35 @@ class PalvolveNative : public CppUserModBase
             return handle_call(L, true);
         });
 
-        Output::send<LogLevel::Normal>(STR("[PalvolveNative] lua bindings registered\n"));
+        // Palgenesis: wild spawn by CharacterID. Lua cannot pass the spawn
+        // delegate (fail-fast, see spawn_character above), so the whole call
+        // lives here. args: charId (string), level (int), x, y, z (numbers).
+        // returns: ok (bool), message (string).
+        lua.register_function("PalgenesisNative_Spawn", [](const LuaMadeSimple::Lua& L) -> int {
+            if (!L.is_string())
+            {
+                L.set_bool(false);
+                L.set_string("characterId (string) required");
+                return 2;
+            }
+            const std::wstring CharId = to_wstring(std::string{L.get_string()});
+            auto next_number = [&L](double Fallback) -> double {
+                if (L.is_integer()) return static_cast<double>(L.get_integer());
+                if (L.is_number()) return L.get_number();
+                return Fallback;
+            };
+            const int Level = static_cast<int>(next_number(10.0));
+            const double X = next_number(0.0);
+            const double Y = next_number(0.0);
+            const double Z = next_number(0.0);
+            std::wstring Msg;
+            const bool Ok = spawn_character(CharId, Level, X, Y, Z, Msg);
+            L.set_bool(Ok);
+            L.set_string(to_string(Msg));
+            return 2;
+        });
+
+        Output::send<LogLevel::Normal>(STR("[PalvolveNative] lua bindings registered (incl. PalgenesisNative_Spawn)\n"));
     }
 
   private:

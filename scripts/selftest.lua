@@ -102,56 +102,20 @@ local function runWorldTests(wc)
         finish("T2/T3 skipped: native bridge pending")
         return
     end
-    local charman = nil
-    pcall(function() charman = util:GetCharacterManager(wc) end)
-    if not (charman and charman:IsValid()) then
-        verdict("T2-spawn", false, "no CharacterManager")
-        finish("T3 skipped: no spawn")
-        return
-    end
+    -- native bridge present: spawn through it (the delegate is handled
+    -- natively as an ordinary unbound delegate; see cpp/src/dllmain.cpp)
     local before = {}
     for _, m in ipairs(FindAllOf("BP_MonsterBase_C") or {}) do
         if m:IsValid() then before[m:GetFullName()] = true end
     end
-    local hp = 1000 * 400
-    local init = {
-        CharacterID = FName("Foxgloam"),
-        Gender = 1, Level = 10,
-        Talent_HP = 50, Talent_Melee = 50, Talent_Shot = 50, Talent_Defense = 50,
-        FullStomach = 150.0,
-        Hp = { Value = hp }, MaxHP = { Value = hp },
-    }
     -- fixed ground coords in the starting-plateau region (measured from live
-    -- roster logs 2026-07-28); floor adjustment on
-    local spawnParam = {
-        SpawnLocation = { X = -361900, Y = 270100, Z = 9000 },
-        SpawnRotation = { Pitch = 0, Yaw = 0, Roll = 0 },
-        SpawnScale = { X = 1, Y = 1, Z = 1 },
-        SpawnCollisionHandlingOverride = 1,
-        bAlwaysRelevant = false,
-        bNeedAdjustToFloor = true,
-        AdjustUpOffset = 50.0,
-        bAdjustShortRayLength = false,
-        bStartAsInactivePalCharacter = false,
-    }
-    -- Delegate ladder v3: nil AND {} both fail-fast the process (0xC0000409,
-    -- harness runs 1-2), uncatchable from Lua. Remaining candidates: omit
-    -- the argument entirely (UE4SS may zero-init the missing param or raise
-    -- a catchable error), then integer 0. Each attempt logs BEFORE the call
-    -- so a crash names its rung.
-    local called = false
-    for _, cbKind in ipairs({ "omitted", "zero" }) do
-        Log(string.format("SpawnNewCharacter attempting cb=%s ...", cbKind))
-        local okCall, errCall = pcall(function()
-            if cbKind == "omitted" then charman:SpawnNewCharacter(init, spawnParam)
-            else charman:SpawnNewCharacter(init, spawnParam, 0) end
-        end)
-        Log(string.format("SpawnNewCharacter cb=%s ok=%s err=%s", cbKind, tostring(okCall), tostring(errCall)))
-        if okCall then called = true break end
-    end
-    if not called then
-        verdict("T2-spawn", false, "SpawnNewCharacter rejected every delegate form (errors above)")
-        finish("T3 skipped: call rejected")
+    -- roster logs 2026-07-28); the native side floor-adjusts
+    local okNat, natOk, natMsg = pcall(PalgenesisNative_Spawn, "Foxgloam", 10, -361900, 270100, 9000)
+    Log(string.format("PalgenesisNative_Spawn ok=%s result=%s msg=%s",
+        tostring(okNat), tostring(natOk), tostring(natMsg)))
+    if not (okNat and natOk) then
+        verdict("T2-spawn", false, "native spawn refused: " .. tostring(natMsg or natOk))
+        finish("T3 skipped: call refused")
         return
     end
 
