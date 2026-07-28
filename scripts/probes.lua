@@ -488,7 +488,7 @@ function M.spawnPal(senderCtx, args)
                             local extras = #state.seen > 0 and (" (unrelated newcomers: " .. table.concat(state.seen, ", ") .. ")") or ""
                             Log(string.format("[probe-spawn] no %s materialized in ~2.5s%s", charId, extras))
                             Role.ack(senderCtx, string.format(
-                                "no %s appeared - SpawnMonster may not support this id, or ids are case-exact%s", charId, extras))
+                                "no %s appeared - SpawnMonster looks dead in retail. Use: !pg become %s (morphs nearest wild pal, then sphere it)%s", charId, charId, extras))
                         end
                     end)
                     state.pending = false
@@ -497,6 +497,60 @@ function M.spawnPal(senderCtx, args)
             end)
         end)
         if not suc then Log("[probe-spawn] FAIL: " .. tostring(e)) end
+    end)
+end
+
+-- !pg become <CharacterID> [level]: morph the nearest WILD pal into the target
+-- species. Data-level id swap (the F7 morph trick aimed at unowned pals);
+-- the live model keeps the old species until capture, but the sphere catches
+-- the NEW species. This is the working "get me a testable X" lane after
+-- SpawnMonster proved dead in retail.
+function M.becomePal(senderCtx, args)
+    local Role = require("role")
+    local target = args and args[1]
+    if not target then Role.ack(senderCtx, "usage: !pg become <CharacterID> (morphs nearest wild pal; sphere it after)") return end
+    -- canonicalize case against the config map (the swap verify and logs
+    -- read better with the real row casing)
+    local okCfg, cfg = pcall(require, "config")
+    if okCfg and cfg.map then
+        local lower = target:lower()
+        for _, p in ipairs(cfg.map) do
+            if p.from and p.from:lower() == lower then target = p.from break end
+            if p.to and p.to:lower() == lower then target = p.to break end
+        end
+    end
+    ExecuteInGameThread(function()
+        local suc, e = pcall(function()
+            local player = FindFirstOf("PalPlayerCharacter")
+            if not (player and player:IsValid()) then Log("[probe-become] no player") return end
+            local ploc = player:K2_GetActorLocation()
+            local nearest, nearestDist = nil, nil
+            for _, m in ipairs(FindAllOf("BP_MonsterBase_C") or {}) do
+                if m:IsValid() then
+                    local p = nil
+                    pcall(function() p = m.CharacterParameterComponent:GetIndividualParameter() end)
+                    if p and p:IsValid() and not hasOwner(p) then
+                        local at = m:K2_GetActorLocation()
+                        local dx, dy, dz = at.X - ploc.X, at.Y - ploc.Y, at.Z - ploc.Z
+                        local d = dx * dx + dy * dy + dz * dz
+                        if not nearestDist or d < nearestDist then nearest, nearestDist = m, d end
+                    end
+                end
+            end
+            if not nearest then
+                Role.ack(senderCtx, "no wild pal nearby to morph - walk toward any wild pal first")
+                return
+            end
+            local p = nearest.CharacterParameterComponent:GetIndividualParameter()
+            local before = p:GetCharacterID():ToString()
+            p.SaveParameter.CharacterID = FName(target)
+            p.SaveParameterMirror.CharacterID = FName(target)
+            local now = p:GetCharacterID():ToString()
+            Log(string.format("[probe-become] %s -> %s (dist %.0f)", before, now, math.sqrt(nearestDist)))
+            Role.ack(senderCtx, string.format(
+                "nearest wild %s is now %s inside (model updates on capture) - sphere it!", before, now))
+        end)
+        if not suc then Log("[probe-become] FAIL: " .. tostring(e)) end
     end)
 end
 

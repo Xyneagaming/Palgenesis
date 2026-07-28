@@ -959,7 +959,12 @@ local function performEvolution(p)
         end)
         local idNow = ""
         pcall(function() idNow = param:GetCharacterID():ToString() end)
-        if not okSwap or idNow ~= targetId then
+        -- Case-INSENSITIVE verify: FName resolves "foxgloam" to an existing
+        -- "Foxgloam" entry (names compare case-insensitively in UE), so the
+        -- write succeeds while a byte compare calls it a failure - which
+        -- aborted AFTER teardown and left the pal swapped but never
+        -- respawned (found via !pg evolve with a lowercase id, 2026-07-28).
+        if not okSwap or idNow:lower() ~= targetId:lower() then
             Log(string.format("SWAP FAILED (err=%s, id=%s) - no respawn attempt",
                 tostring(errSwap), idNow))
             refundCost("swap failed")
@@ -2401,10 +2406,28 @@ function Evolution.init()
                     Role.ack(senderCtx, "usage: !pg evolve <CharacterID>")
                     return
                 end
+                -- canonicalize the id's case against the config map so the
+                -- verify compares like against like ("foxgloam" -> "Foxgloam")
+                local lower = target:lower()
+                for _, p in ipairs(Config.map or {}) do
+                    if p.from and p.from:lower() == lower then target = p.from break end
+                    if p.to and p.to:lower() == lower then target = p.to break end
+                end
                 local okProbes, probes = pcall(require, "probes")
                 if okProbes and probes.ensureFreeMode then probes.ensureFreeMode() end
                 local ok, msg = Evolution.debugEvolveTo(target)
                 if not ok then Role.ack(senderCtx, "evolve: " .. tostring(msg)) end
+            end,
+            -- !pg become <CharacterID>: morph the NEAREST WILD pal into the
+            -- target species (data-level id swap, the F7 probe's trick aimed
+            -- at wild pals). The model stays wrong until captured, but the
+            -- sphere catches the NEW species - the working substitute for
+            -- SpawnMonster, which is confirmed dead in retail (2026-07-28:
+            -- vanilla Kitsunebi never materialized either).
+            become = function(senderCtx, args)
+                if not Config.devMode then return end
+                local okProbes, probes = pcall(require, "probes")
+                if okProbes and probes.becomePal then probes.becomePal(senderCtx, args) end
             end,
             xcond = function(senderCtx)
                 if not Config.devMode then return end
