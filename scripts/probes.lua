@@ -303,6 +303,12 @@ local function giveItemsV2(inv)
         local ret4 = inv:AddItem_ServerInternal(FName("Palvolve_AdaptionStone"), 5, false, 0.0, true)
         Log(string.format("[probe-testkit] AddItem PalSphere=%s Mega=%s EvoStone=%s AdaptStone=%s",
             tostring(ret1), tostring(ret2), tostring(ret3), tostring(ret4)))
+        -- per-element adaptation stones (the config's stoneItemIds since 1.4.x;
+        -- the legacy generic stone above stays for the fallback path)
+        for _, elem in ipairs({ "Normal", "Fire", "Water", "Leaf", "Electricity",
+                                "Ice", "Earth", "Dark", "Dragon" }) do
+            inv:AddItem_ServerInternal(FName("Palvolve_AdaptationStone_" .. elem), 5, false, 0.0, true)
+        end
         -- Material costs for the smoke pairs (Penguin line + crafting inputs)
         for _, mat in ipairs({ "IceOrgan", "PalFluid", "MeteorDrop", "Pal_crystal_S" }) do
             inv:AddItem_ServerInternal(FName(mat), 30, false, 0.0, true)
@@ -357,6 +363,92 @@ local KIT_KEY = Key.INS or Key.F4
 RegisterKeyBind(KIT_KEY, Debounced("testkit", function()
     ExecuteInGameThread(M.giveTestKit)
 end))
+
+-- ------------------------------------------------ argument commands (Nyx fork)
+-- Chat commands with arguments, wired through the extended chatcommands.lua:
+--   /palvolve give <ItemId> [count]      /palvolve spawn <CharacterID> [level]
+--   /palvolve exp [amount]               /palvolve time
+--   /palvolve evolve <CharacterID>  (in evolution.lua: debugEvolveTo, no gates)
+-- All singleplayer/host authority only, same as the rest of the probes.
+
+local function localInv()
+    local pc = FindFirstOf("PalPlayerController")
+    if not (pc and pc:IsValid()) then return nil, nil, "no PalPlayerController" end
+    local ps = pc:GetPalPlayerState()
+    if not (ps and ps:IsValid()) then return nil, pc, "no PalPlayerState" end
+    local inv = ps:GetInventoryData()
+    if not (inv and inv:IsValid()) then return nil, pc, "no InventoryData" end
+    return inv, pc, nil
+end
+
+-- /palvolve give <ItemId> [count]: any item by static id, authoritative path.
+-- The AddItem return enum lands in the log so a wrong id is visible instantly.
+function M.giveItem(senderCtx, args)
+    local Role = require("role")
+    local itemId = args and args[1]
+    if not itemId then Role.ack(senderCtx, "usage: /palvolve give <ItemId> [count]") return end
+    local count = tonumber(args and args[2]) or 1
+    ExecuteInGameThread(function()
+        local suc, e = pcall(function()
+            local inv, _, why = localInv()
+            if not inv then Log("[probe-give] " .. tostring(why)) return end
+            local ret = inv:AddItem_ServerInternal(FName(itemId), count, false, 0.0, true)
+            Log(string.format("[probe-give] %s x%d -> %s", itemId, count, tostring(ret)))
+            Role.ack(senderCtx, string.format("give %s x%d: result %s", itemId, count, tostring(ret)))
+        end)
+        if not suc then Log("[probe-give] FAIL: " .. tostring(e)) end
+    end)
+end
+
+-- /palvolve spawn <CharacterID> [level]: wild spawn near the player via the
+-- cheat manager (the only pal-give path alive in retail; catch it after).
+function M.spawnPal(senderCtx, args)
+    local Role = require("role")
+    local charId = args and args[1]
+    if not charId then Role.ack(senderCtx, "usage: /palvolve spawn <CharacterID> [level]") return end
+    local level = tonumber(args and args[2]) or 10
+    ExecuteInGameThread(function()
+        local suc, e = pcall(function()
+            local _, pc, why = localInv()
+            if not pc then Log("[probe-spawn] " .. tostring(why)) return end
+            local cm = pc.CheatManager
+            if not (cm and cm:IsValid()) then
+                pcall(function() pc:EnableCheats() end)
+                cm = pc.CheatManager
+            end
+            if not (cm and cm:IsValid()) then
+                Log("[probe-spawn] no CheatManager (even after EnableCheats)")
+                Role.ack(senderCtx, "spawn failed: no cheat manager")
+                return
+            end
+            cm:SpawnMonster(FName(charId), level)
+            Log(string.format("[probe-spawn] SpawnMonster %s lvl %d", charId, level))
+            Role.ack(senderCtx, string.format("spawned %s at level %d (wild - sphere it to own it)", charId, level))
+        end)
+        if not suc then Log("[probe-spawn] FAIL: " .. tostring(e)) end
+    end)
+end
+
+-- /palvolve exp [amount]: EXP to the player AND summoned pals around
+-- (default 50000). Player levels gate the workbench tech and pair minLevels.
+function M.giveExp(senderCtx, args)
+    local Role = require("role")
+    local amount = tonumber(args and args[1]) or 50000.0
+    ExecuteInGameThread(function()
+        local suc, e = pcall(function()
+            local player = FindFirstOf("PalPlayerCharacter")
+            if not (player and player:IsValid()) then Log("[probe-exp] no player") return end
+            local util = StaticFindObject("/Script/Pal.Default__PalUtility")
+            local center = player:K2_GetActorLocation()
+            local palClass = StaticFindObject("/Script/Pal.PalCharacter")
+            util:GiveExpToAroundPlayerCharacter(player, center, 3000.0, amount, true)
+            util:GiveExpToAroundCharacter(player, center, 3000.0, amount, palClass, true)
+            Log(string.format("[probe-exp] %.0f EXP to player + pals around", amount))
+            Role.ack(senderCtx, string.format("%.0f EXP given (player + pals around)", amount))
+        end)
+        if not suc then Log("[probe-exp] FAIL: " .. tostring(e)) end
+    end)
+end
 
 -- F10 + NUM9: EXP lever to trigger level-ups reproducibly (NUM9 added since
 -- F10 gets swallowed on some setups; numpad keys reliably reach the handlers)
@@ -701,9 +793,10 @@ bindProbeKey("PAGE_DOWN", "probe-pal", function()
     end)
 end)
 
--- NUM_SEVEN: toggle day/night (authoritative in SP; night window is 23..3).
--- Replaces the PalDefender /settime dependency for condition tests.
-bindProbeKey("NUM_SEVEN", "probe-settime", function()
+-- NUM_SEVEN or chat "/palvolve time": toggle day/night (authoritative in SP;
+-- night window is 23..3). Replaces the PalDefender /settime dependency for
+-- condition tests. Exposed on M for the chat path (Nyx fork).
+function M.toggleTime()
     local util = StaticFindObject("/Script/Pal.Default__PalUtility")
     local playerCtx = Role.localPlayerCtx()
     local wc = playerCtx and playerCtx.pawn
@@ -721,7 +814,8 @@ bindProbeKey("NUM_SEVEN", "probe-settime", function()
     tm:SetGameTime_FixDay(targetHour)
     Log(string.format("[probe-settime] was %s -> set hour %d, now IsNight=%s",
         isNight and "night" or "day", targetHour, tostring(util:IsNight(wc))))
-end)
+end
+bindProbeKey("NUM_SEVEN", "probe-settime", M.toggleTime)
 
 -- NUM_EIGHT: cycle a status effect on the summoned pal (burn -> electrical ->
 -- freeze -> poison -> clear). Authoritative in SP; replaces hunting wild pals

@@ -22,8 +22,10 @@ local function senderCtxOf(ps)
     return Role.playerCtxFor(pc)
 end
 
--- handlers = { rollback = function(playerCtx) ... end, ... }; unknown
--- subcommands fall back to handlers.help
+-- handlers = { rollback = function(playerCtx, args) ... end, ... }; unknown
+-- subcommands fall back to handlers.help. args is an array of the tokens
+-- after the subcommand, taken from the ORIGINAL text (case preserved: item
+-- and character ids read better in logs, and FName lookups stay exact).
 function ChatCommands.init(handlers)
     return pcall(function()
         RegisterHook("/Script/Pal.PalPlayerState:EnterChat", function(self, msgParam)
@@ -36,8 +38,15 @@ function ChatCommands.init(handlers)
                 local ctx = senderCtxOf(self:get())
                 if not ctx then return end
                 local sub = lower:match("^%S+%s+(%S+)") or "help"
+                local args = {}
+                local rest = text:match("^%S+%s+%S+%s+(.*)$")
+                if rest then
+                    for token in rest:gmatch("%S+") do
+                        args[#args + 1] = token
+                    end
+                end
                 local handler = handlers[sub] or handlers.help
-                if handler then handler(ctx) end
+                if handler then handler(ctx, args) end
             end)
         end)
     end)

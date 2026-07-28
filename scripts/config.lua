@@ -19,7 +19,9 @@ local Conditions = require("conditions")
 local Config = {
     -- Dev mode: enables the diagnostic key bindings (probes.lua) and the
     -- [diag] sequence telemetry in the log.
-    devMode = false,
+    -- Nyx fork: ON by default - this fork is our development/test build.
+    -- Flip to false if a build ever leaves the household.
+    devMode = true,
 
     -- Mod version, reported to connected clients by the host handshake. Keep in
     -- sync with Info.json (the release flow checks this).
@@ -996,6 +998,17 @@ local Config = {
         stone = "adaptation",
         enabled = true
     }, -- Univolt -> Univolt Cryst
+    {
+        from = "Kitsunebi",
+        to = "Foxgloam",
+        category = "adaptation",
+        minLevel = 1,
+        stone = "adaptation",
+        enabled = true
+    }, -- Foxparks -> Foxgloam (Nyx custom dark form; pal row added by the
+       -- NyxForms PalSchema mod - keep this pair BEFORE the Cryst pair so the
+       -- low-level test path resolves first. minLevel 1 is the test dial;
+       -- raise it when the form graduates to a real balance pass.
     {
         from = "Kitsunebi",
         to = "Kitsunebi_Ice",

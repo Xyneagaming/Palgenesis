@@ -2366,6 +2366,45 @@ function Evolution.init()
                 local okProbes, probes = pcall(require, "probes")
                 if okProbes and probes.playFinaleSample then probes.playFinaleSample() end
             end,
+            -- Nyx fork: argument-taking dev commands (devMode only).
+            give = function(senderCtx, args)
+                if not Config.devMode then return end
+                local okProbes, probes = pcall(require, "probes")
+                if okProbes and probes.giveItem then probes.giveItem(senderCtx, args) end
+            end,
+            spawn = function(senderCtx, args)
+                if not Config.devMode then return end
+                local okProbes, probes = pcall(require, "probes")
+                if okProbes and probes.spawnPal then probes.spawnPal(senderCtx, args) end
+            end,
+            exp = function(senderCtx, args)
+                if not Config.devMode then return end
+                local okProbes, probes = pcall(require, "probes")
+                if okProbes and probes.giveExp then probes.giveExp(senderCtx, args) end
+            end,
+            time = function(senderCtx)
+                if not Config.devMode then return end
+                local okProbes, probes = pcall(require, "probes")
+                if okProbes and probes.toggleTime then
+                    ExecuteInGameThread(probes.toggleTime)
+                end
+            end,
+            -- /palvolve evolve <CharacterID>: gate-free evolution of the
+            -- summoned pal into ANY target (debugEvolveTo: bypasses level,
+            -- conditions, configured pairs; forces free mode). The fast lane
+            -- for testing custom forms without stones or the workbench.
+            evolve = function(senderCtx, args)
+                if not Config.devMode then return end
+                local target = args and args[1]
+                if not target then
+                    Role.ack(senderCtx, "usage: /palvolve evolve <CharacterID>")
+                    return
+                end
+                local okProbes, probes = pcall(require, "probes")
+                if okProbes and probes.ensureFreeMode then probes.ensureFreeMode() end
+                local ok, msg = Evolution.debugEvolveTo(target)
+                if not ok then Role.ack(senderCtx, "evolve: " .. tostring(msg)) end
+            end,
             xcond = function(senderCtx)
                 if not Config.devMode then return end
                 local okProbes, probes = pcall(require, "probes")
