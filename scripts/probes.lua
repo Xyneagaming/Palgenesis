@@ -1225,6 +1225,18 @@ function M.grantMoves(senderCtx)
     end)
 end
 
+-- NUM0 (fallback DELETE): re-arm the chat-command hook after UE4SS's callback
+-- GC kills it mid-session ("Ref was not function ... removing hook!" in the
+-- log; every !pg command goes silent). A keybind survives that failure mode,
+-- so it can resurrect the chat channel without a relaunch. Press ONLY when
+-- chat is dead: re-registering over a LIVE hook stacks it (crash risk).
+bindProbeKey(Key.NUM_ZERO and "NUM_ZERO" or "DEL", "probe-rearm", function()
+    local CC = require("chatcommands")
+    local ok, err = CC.rearm()
+    Log(string.format("[probe-rearm] chat hook re-registered ok=%s%s", tostring(ok),
+        ok and " - !pg commands should answer again" or (" err=" .. tostring(err))))
+end)
+
 Log(string.format("Probes active: F3 revert(own), F4 arm radial probes, F5 overlay, F6 VFX, F7 morph FX bases, F8 fanfare, F9 freeze, F10 give EXP, END free mode, test kit on %s, conditions on HOME/PAGE_UP/PAGE_DOWN, NUM7 day/night, NUM8 status cycle, F1 finale assets, BACKSPACE full evolution run (random target, 12 stages), chat !pg free|kit|fx (Palgenesis)",
     Key.INS and "INSERT" or "POS1"))
 

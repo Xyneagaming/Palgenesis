@@ -30,7 +30,17 @@ end
 -- subcommands fall back to handlers.help. args is an array of the tokens
 -- after the subcommand, taken from the ORIGINAL text (case preserved: item
 -- and character ids read better in logs, and FName lookups stay exact).
+--
+-- Rearm support (Palgenesis): UE4SS's callback GC can free a live hook's
+-- function ref mid-session ("Ref was not function ... removing hook!"),
+-- which kills every chat command until relaunch. The handlers are kept on
+-- the module so rearm() can re-register without a restart. Rearm is MANUAL
+-- (a probe keybind) because stacked script hooks on one function are a
+-- crash risk - only re-register once the old hook is confirmed dead.
+ChatCommands._handlers = nil
+
 function ChatCommands.init(handlers)
+    ChatCommands._handlers = handlers or ChatCommands._handlers
     return pcall(function()
         RegisterHook("/Script/Pal.PalPlayerState:EnterChat", function(self, msgParam)
             pcall(function()
@@ -62,6 +72,13 @@ function ChatCommands.init(handlers)
             end)
         end)
     end)
+end
+
+-- Re-register the chat hook with the stored handlers. Call ONLY when the
+-- hook is confirmed dead (chat commands silent) - see rearm note above.
+function ChatCommands.rearm()
+    if not ChatCommands._handlers then return false, "no handlers stored" end
+    return ChatCommands.init(ChatCommands._handlers)
 end
 
 return ChatCommands
