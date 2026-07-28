@@ -106,3 +106,18 @@ if okCfg and cfg.devMode then
         Log("probes failed to load: " .. tostring(errProbes))
     end
 end
+
+-- Headless selftest (Palgenesis): armed ONLY by the test runner via the
+-- PALGENESIS_SELFTEST=1 environment variable, so a normal boot (client or
+-- real server) never runs it. See selftest.lua and tools/palserver-test.ps1
+-- in the vault project.
+do
+    local flag = nil
+    pcall(function() flag = os.getenv("PALGENESIS_SELFTEST") end)
+    if flag == "1" then
+        local okSt, errSt = pcall(require, "selftest")
+        if not okSt then
+            Log("selftest failed to load: " .. tostring(errSt))
+        end
+    end
+end
