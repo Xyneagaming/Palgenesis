@@ -15,8 +15,8 @@
 --   HOME = time/weather + evaluated conditions   PAGE_UP = location/context
 --   PAGE_DOWN = pal raw readings (water, status sweep, waza elements, HP)
 --   F1 = finale asset probe (verdicts + component capture check)
---   BACKSPACE = FULL evolution run, one press per element stage: the
---               summoned pal evolves into a random stage target
+--   chat !pg fullrun = FULL evolution run (WAS BACKSPACE - fired on every
+--               typo in the chat box; keybinds ignore text focus)
 --   Chat commands for compact keyboards (devMode only): /palvolve free
 --   (= END), /palvolve kit (= INSERT), /palvolve fx (standalone finale
 --   cycle at the summoned pal)
@@ -1135,8 +1135,13 @@ local FULL_CYCLE = {
     { note = "Dragon+Leaf dual", targets = { "SkyDragon_Grass" } },
     { note = "Fire+Dark dual",   targets = { "Manticore_Dark" } },
 }
+-- CHAT-ONLY since 2026-07-28 (!pg fullrun): this lived on BACKSPACE, and
+-- UE4SS keybinds fire even while the CHAT BOX has focus - every typo
+-- correction rolled a random evolution on the summoned pal until the FX
+-- flood crashed the game (Foxgloam -> WhiteMoth -> KingBahamut -> boom).
+-- Keybinds may only carry actions that are safe to fire mid-typing.
 local fullRunIdx = 0
-bindProbeKey("BACKSPACE", "probe-finale-run", function()
+function M.fullRun()
     local ctx, why = conditionCtx()
     if not ctx then
         Log("[probe-finale-run] no ctx: " .. tostring(why))
@@ -1170,7 +1175,7 @@ bindProbeKey("BACKSPACE", "probe-finale-run", function()
         Role.chat(ctx.playerCtx, "Palvolve full run: " .. tostring(msg))
         Log(string.format("[probe-finale-run] FAIL: %s", tostring(msg)))
     end
-end)
+end
 
 -- !pg moves: grant the SUMMONED pal its current species' level-up moves up to
 -- its level (an evolved pal keeps only its old form's kit - the game grants
@@ -1237,7 +1242,7 @@ bindProbeKey(Key.NUM_ZERO and "NUM_ZERO" or "DEL", "probe-rearm", function()
         ok and " - !pg commands should answer again" or (" err=" .. tostring(err))))
 end)
 
-Log(string.format("Probes active: F3 revert(own), F4 arm radial probes, F5 overlay, F6 VFX, F7 morph FX bases, F8 fanfare, F9 freeze, F10 give EXP, END free mode, test kit on %s, conditions on HOME/PAGE_UP/PAGE_DOWN, NUM7 day/night, NUM8 status cycle, F1 finale assets, BACKSPACE full evolution run (random target, 12 stages), chat !pg free|kit|fx (Palgenesis)",
+Log(string.format("Probes active: F3 revert(own), F4 arm radial probes, F5 overlay, F6 VFX, F7 morph FX bases, F8 fanfare, F9 freeze, F10 give EXP, END free mode, test kit on %s, conditions on HOME/PAGE_UP/PAGE_DOWN, NUM7 day/night, NUM8 status cycle, F1 finale assets, NUM0 re-arm chat hook, chat !pg free|kit|fx|fullrun (Palgenesis; fullrun = 12-stage random evolution, chat-only)",
     Key.INS and "INSERT" or "POS1"))
 
 return M

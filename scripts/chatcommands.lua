@@ -38,11 +38,20 @@ end
 -- (a probe keybind) because stacked script hooks on one function are a
 -- crash risk - only re-register once the old hook is confirmed dead.
 ChatCommands._handlers = nil
+-- Generation counter: every (re)registration bumps it and the new closure
+-- captures its own generation. A stale hook instance (left behind by a
+-- rearm over a still-live hook) sees the mismatch and no-ops, so stacked
+-- registrations never double-dispatch - rearm is safe even when pressed
+-- while the hook is alive.
+ChatCommands._gen = 0
 
 function ChatCommands.init(handlers)
     ChatCommands._handlers = handlers or ChatCommands._handlers
+    ChatCommands._gen = ChatCommands._gen + 1
+    local myGen = ChatCommands._gen
     return pcall(function()
         RegisterHook("/Script/Pal.PalPlayerState:EnterChat", function(self, msgParam)
+            if myGen ~= ChatCommands._gen then return end
             pcall(function()
                 local text = ""
                 pcall(function() text = msgParam:get():ToString() end)

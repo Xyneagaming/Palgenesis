@@ -2436,6 +2436,14 @@ function Evolution.init()
                 local okProbes, probes = pcall(require, "probes")
                 if okProbes and probes.grantMoves then probes.grantMoves(senderCtx) end
             end,
+            -- !pg fullrun: the 12-stage random-evolution FX test. CHAT-ONLY:
+            -- it lived on BACKSPACE, and keybinds fire while the chat box has
+            -- focus - every typo correction rolled a random evolution.
+            fullrun = function(senderCtx)
+                if not Config.devMode then return end
+                local okProbes, probes = pcall(require, "probes")
+                if okProbes and probes.fullRun then ExecuteInGameThread(probes.fullRun) end
+            end,
             xcond = function(senderCtx)
                 if not Config.devMode then return end
                 local okProbes, probes = pcall(require, "probes")
@@ -2619,7 +2627,7 @@ function Evolution.init()
                 Role.ack(senderCtx, I18n.msg("helpLine"))
             end,
         })
-        if okCmd then Log("Chat commands active (Palgenesis): !pg rollback | give | spawn | become | moves | exp | time | free | kit | evolve") end
+        if okCmd then Log("Chat commands active (Palgenesis): !pg rollback | give | spawn | become | moves | fullrun | exp | time | free | kit | evolve") end
     end)
 
     Log(string.format("Evolution core active: %s = check/confirm, chat: !pg rollback",
