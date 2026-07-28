@@ -400,12 +400,23 @@ function M.giveItem(senderCtx, args)
     end)
 end
 
--- /palvolve spawn <CharacterID> [level]: wild spawn near the player via the
--- cheat manager (the only pal-give path alive in retail; catch it after).
+-- /palvolve spawn <CharacterID> [level]: wild spawn via the cheat manager
+-- (the only pal-give path alive in retail; catch it after). SpawnMonster
+-- returns void and says nothing about WHERE it spawned (first field test
+-- dropped the pal out of sight), so this does not trust it: it diffs the
+-- monster roster, teleports the newcomer right in front of the player, and
+-- reports the measured position. No new actor within a second = the id is
+-- wrong, and the ack says so instead of pretending.
+local SPAWN_ALIASES = {
+    foxparks = "Kitsunebi", foxsparks = "Kitsunebi",
+    pengullet = "Penguin", penking = "CaptainPenguin",
+    lamball = "SheepBall", cattiva = "PinkCat",
+}
 function M.spawnPal(senderCtx, args)
     local Role = require("role")
     local charId = args and args[1]
     if not charId then Role.ack(senderCtx, "usage: /palvolve spawn <CharacterID> [level]") return end
+    charId = SPAWN_ALIASES[charId:lower()] or charId
     local level = tonumber(args and args[2]) or 10
     ExecuteInGameThread(function()
         local suc, e = pcall(function()
@@ -421,9 +432,45 @@ function M.spawnPal(senderCtx, args)
                 Role.ack(senderCtx, "spawn failed: no cheat manager")
                 return
             end
+            -- roster before, so the newcomer is identifiable afterwards
+            local before = {}
+            for _, m in ipairs(FindAllOf("BP_MonsterBase_C") or {}) do
+                if m:IsValid() then before[m:GetFullName()] = true end
+            end
             cm:SpawnMonster(FName(charId), level)
-            Log(string.format("[probe-spawn] SpawnMonster %s lvl %d", charId, level))
-            Role.ack(senderCtx, string.format("spawned %s at level %d (wild - sphere it to own it)", charId, level))
+            Log(string.format("[probe-spawn] SpawnMonster %s lvl %d requested", charId, level))
+            -- give the actor a tick to exist, then fetch it to the player
+            local tries = 0
+            LoopAsync(250, function()
+                tries = tries + 1
+                local done = false
+                ExecuteInGameThread(function()
+                    local newcomer = nil
+                    for _, m in ipairs(FindAllOf("BP_MonsterBase_C") or {}) do
+                        if m:IsValid() and not before[m:GetFullName()] then newcomer = m break end
+                    end
+                    if newcomer then
+                        done = true
+                        local player = FindFirstOf("PalPlayerCharacter")
+                        if player and player:IsValid() then
+                            local loc = player:K2_GetActorLocation()
+                            local fwd = player:GetActorForwardVector()
+                            local dest = { X = loc.X + fwd.X * 400, Y = loc.Y + fwd.Y * 400, Z = loc.Z + 150 }
+                            local spawnedAt = newcomer:K2_GetActorLocation()
+                            newcomer:K2_TeleportTo(dest, { Pitch = 0, Yaw = 0, Roll = 0 })
+                            Log(string.format("[probe-spawn] %s appeared at (%.0f, %.0f, %.0f) - teleported to player",
+                                charId, spawnedAt.X, spawnedAt.Y, spawnedAt.Z))
+                            Role.ack(senderCtx, string.format("%s lvl %d is in front of you (sphere it to own it)", charId, level))
+                        end
+                    elseif tries >= 4 then
+                        done = true
+                        Log(string.format("[probe-spawn] NO new monster after %s - unknown CharacterID?", charId))
+                        Role.ack(senderCtx, string.format(
+                            "nothing spawned for '%s' - wrong CharacterID? (Foxparks=Kitsunebi; ids are the internal row names)", charId))
+                    end
+                end)
+                return done
+            end)
         end)
         if not suc then Log("[probe-spawn] FAIL: " .. tostring(e)) end
     end)
