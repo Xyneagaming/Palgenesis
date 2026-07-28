@@ -36,15 +36,16 @@ Because the chart is a strict food chain:
   Pokemon, which is why raw stats dominate the meta. **Min-max hooks live in skills and
   passives, not chart edits.**
 
-## Roster distribution [COMMUNITY - Fextralife count, ~287 pals; spot-check via G5]
+## Roster distribution [FIELD 2026-07-28 - our build's DT, see COMPENDIUM.md; supersedes the wiki counts]
 
-Dark 70 · Water 47 · Grass 46 · Ground 44 · Fire 43 · Ice 38 · Neutral 36 (almost no duals) ·
-**Electric 25 · Dragon 25 (both underserved; Dragon endgame-locked)**.
+360 obtainable pals: Dark **92** · Grass 54 · Water 52 · Fire 51 · Ground 50 · Neutral 49 ·
+Ice 44 · **Electric 34 · Dragon 33 (both underserved; Dragon endgame-locked)**.
 
-**Empty dual pairs (12 of 36, zero vanilla pals):** Fire/Grass, Fire/Electric, Fire/Neutral,
-Grass/Electric, **Grass/Ice**, Electric/Ground, Electric/Ice, Electric/Neutral,
-Ground/Dragon, Ground/Neutral, Ice/Neutral, Dragon/Neutral.
-One-pal pairs: Water/Neutral, Ice/Dark, Fire/Ice, Dark/Neutral.
+**Empty dual pairs (9 of 36, zero pals in our build):** Fire/Electric, Fire/Neutral,
+Electric/Ice, Electric/Grass, Electric/Neutral, **Grass/Ice**, Ice/Neutral, Dragon/Neutral,
+Ground/Neutral. (The research pass's wiki-derived list wrongly included Fire/Grass,
+Ground/Electric, and Ground/Dragon - each exists with 1-2 pals.) One-pal pairs worth one
+line each: Fire/Grass, Fire/Ice, Ground/Dragon. Most-served dual: Dark/Fire (11).
 
 ## Shift-on-evolution grammar [CONFIRMED patterns, COMMUNITY sentiment]
 
@@ -61,18 +62,18 @@ One-pal pairs: Water/Neutral, Ice/Dark, Fire/Ice, Dark/Neutral.
   (blank canvas -> element on evolution), and Neutral bases shifting INTO underserved
   elements is a signature Palgenesis move.
 
-## Target niches (highest value first)
+## Target niches (highest value first) [updated to FIELD data]
 
-1. **Electric anything** - 4 of the 12 empty pairs involve it; Fire/Electric (community-
-   named best theoretical combo, single Ground weakness), Grass/Electric, Electric/Ground,
-   Electric/Ice.
-2. **Mid-game Dragon** - Ground/Dragon is empty and would be the first accessible tanky
-   Dragon line.
-3. **Grass/Ice** - the system's only possible 4x glass cannon; a genuinely novel niche
-   vanilla never shipped. Highest offense/utility budget in the mod, paid for by the only
+1. **Electric anything** - 4 of the 9 real empty pairs involve it: Fire/Electric
+   (community-named best theoretical combo, single Ground weakness), Electric/Grass,
+   Electric/Ice, Electric/Neutral.
+2. **Grass/Ice** - the system's only possible 4x glass cannon; still genuinely empty in
+   our build. Highest offense/utility budget in the mod, paid for by the only
    double-weakness in the game. Use once, deliberately.
-4. **Fire/Grass** - empty; thematically rich (ash/regrowth); covers Grass+Ice+Ground.
-5. **Neutral duals** - five empty pairs; pairs with the Eevee-logic base forms.
+3. **Neutral duals** - 5 of the 9 empties involve Neutral; pairs with the Eevee-logic
+   base forms (Neutral base -> element on evolution).
+4. **Mid-game Dragon** - only 33 Dragons, near-all endgame; Ground/Dragon has exactly one
+   pal, so an accessible tanky Dragon line still has room.
 
 Budget note: fortress duals sit at the defensive ceiling - give them modest stats. Fire
 duals are the offense ceiling (3-element STAB coverage) - budget down accordingly.

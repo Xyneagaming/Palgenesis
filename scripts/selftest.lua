@@ -48,6 +48,20 @@ end
 
 -- world-dependent tests, run once a world context exists
 local function runWorldTests(wc)
+    -- optional datamine pass (PALGENESIS_DATAMINE=1): dump live DTs to
+    -- kb/data CSVs before the tests, same world-up safe point.
+    local mineFlag = nil
+    pcall(function() mineFlag = os.getenv("PALGENESIS_DATAMINE") end)
+    if mineFlag == "1" then
+        local okDm, dm = pcall(require, "datamine")
+        if okDm and dm and dm.run then
+            local okRun, errRun = pcall(dm.run)
+            if not okRun then Log("DATAMINE crashed: " .. tostring(errRun)) end
+        else
+            Log("DATAMINE module failed to load: " .. tostring(dm))
+        end
+    end
+
     local util = StaticFindObject("/Script/Pal.Default__PalUtility")
 
     -- T1: waza rows, read the TERRITORY: row names straight off the data

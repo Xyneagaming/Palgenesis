@@ -72,17 +72,23 @@ NFE ~250-350, standard finals ~480-540, pseudo-legendary 600, box legendaries 67
 allocation puzzle (choices exclusive). **Evolution should add allocation-style choice - the
 axis Palworld lacks** (branch choices, exclusive gates, transfer taxes), not more farming.
 
-## Species stat landscape [COMMUNITY - game8 1.0-era; ±5-15 site variance, pin via G5]
+## Species stat landscape [FIELD 2026-07-28 - our DT dump, COMPENDIUM.md; supersedes wiki bands]
 
-Bands (HP/Atk/Def): trash 60-75 (Lamball 70/70/70, Foxparks 65/75/70) · early-mid 80-95 ·
-strong regular 100-115 (Grizzbolt 105/100/100) · elite 120-130 (Anubis 120/130/100) ·
-legendary 135-150 (Jetragon 110/140/110, Frostallion 140/140/120, Bellanoir Atk 150 = roster
-Atk ceiling). Whole roster spans only ~2.5x per stat (Pokemon spans 5-10x).
+360 obtainable pals. Bands hold: trash 60-75 (Foxparks 65/70/75/70) · early-mid 80-95 ·
+strong regular 100-115 · elite 120-130 · legendary 135-150. Ceilings in OUR build:
+MeleeAttack **150**, ShotAttack 150 (Bellanoir) with ONE 200 outlier (WorldTreeDragon,
+1.0's rarity-20 apex), Defense 145 standard with a 200 band (WorldTreeDragon/KingWhale),
+HP 150 standard (KingWhale 180, WorldTreeDragon 200). Note stats split Melee/Shot attack;
+most combat math cares about ShotAttack. Roster spans ~2.5x per stat (Pokemon: 5-10x).
 
 ## Stat-design rules
 
 1. **Stage bands [PROPOSAL]:** stage 1 = 60-75, stage 2 = 85-100, stage 3 = 105-125.
-   130+ only for evolutions of already-elite lines. **Hard ceiling 150 on any stat.**
+   130+ only for evolutions of already-elite lines. **Hard ceiling 150 on any stat**
+   (the vanilla standard ceiling; the 200 band is WorldTreeDragon's alone and stays that
+   way). **Ratified balance bar (Sayber 2026-07-28): vanilla-inline overall; the highest
+   evolutions may creep slightly (<=155-160 on ONE flagship apex line) ONLY behind
+   raid-tier acquisition costs.** Creep without the gate is a creep-trap violation.
 2. **Budget per stage: total (HP+Atk+Def) gain +60 to +90, no single stat jumping >+30.**
    Weight Attack heaviest in value judgments (ratio damage model + big flat HP base).
    Final stages get a shaped statline (tank vs sweeper), not flat +30/+30/+30.

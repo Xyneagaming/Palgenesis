@@ -18,6 +18,10 @@ you are applying.** This KB exists so we never re-derive from scratch.
 4. **Balance bar = deep min-max layer.** Evolution is a real optimization system layered
    on breeding/condensing, not a casual toggle. Consequence: every number is balanced
    against a FULLY BUILT pal (IV 100, max souls, 4-star, meta passives), never a naked one.
+5. **Power philosophy (ratified 2026-07-28): vanilla-inline.** Nyx holds the dial; evolved
+   forms live inside vanilla bands, and only the highest evolutions may creep slightly
+   past, gated behind raid-tier acquisition cost. (Sayber: "keep it inline with vanilla
+   power, with highest evolutions maybe creeping just a little but being hard to obtain.")
 
 Derived locks (from the research, adopted as law unless Sayber overturns):
 - **Never raise a ceiling; change identity.** Evolved forms stay inside vanilla stat bands
@@ -44,6 +48,7 @@ balance around a disputed value without running its gate.
 
 | File | Load before... |
 |---|---|
+| [COMPENDIUM.md](COMPENDIUM.md) | anything - OUR build's roster/skills/combos ground truth (raw CSVs in kb/data/) |
 | [EVOLUTION-DESIGN.md](EVOLUTION-DESIGN.md) | designing any line: stages, thresholds, methods, branches |
 | [STAT-MATH.md](STAT-MATH.md) | assigning any base stat; both games' formulas + power-creep traps |
 | [MOVESET-DESIGN.md](MOVESET-DESIGN.md) | authoring any waza grant/learnset/signature skill |

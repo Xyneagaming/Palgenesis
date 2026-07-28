@@ -98,8 +98,13 @@ drawing** - it disciplines every choice.
    suppress (or a too-fluffy tail it trips over).
 6. **Partner-skill hook**: stealth/night utility; ruff flecks brighten when active (lit
    emissive state = texture swap).
-7. **Anti-Pokemon**: NO rings (Umbreon), NO mane (Zoroark); marking system = scattered
-   ember-fleck constellation, literalizing "sparks."
+7. **Anti-collision list [FIELD 2026-07-28, from the compendium's fox-family table]**:
+   NO rings (Umbreon), NO mane (Zoroark), **NO moon/celestial motifs (Nox - the vanilla
+   mono-Dark nocturnal quadruped fox, our nearest neighbor)**, NO robes/witch/shrine garb
+   and NO bipedal stance (Wixen, Wixen Noct, DarkFlameFox, FoxExorcist - the humanoid
+   kitsune lane). Foxgloam's story is EMBERS: the fire that went dark, told in scattered
+   ember-fleck markings. Nox is moonlight; the kitsune witches are sorcery; we are the
+   campfire after midnight. Marking system literalizes "sparks" from FoxSPARKS.
 8. **Sheet spec**: four-square stance, legs separated, mouth closed, tail clear of body;
    hero + orthos + greyscale pass; all glow as flat emissive shapes, no particle flames in
    anything fed to Meshy.
