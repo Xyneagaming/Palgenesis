@@ -472,11 +472,14 @@ function M.spawnPal(senderCtx, args)
             -- (0xC0000409, uncatchable) and omitting it is rejected. The
             -- future lane is PalgenesisNative_Spawn in the C++ companion;
             -- until that is built, this command routes the user to become.
-            if type(PalgenesisNative_Spawn) ~= "function" then
-                Role.ack(senderCtx, string.format(
-                    "true spawn needs the native bridge (not built yet). Use: !pg become %s - morphs the nearest wild pal, sphere it to own the new species", charId))
-                return
-            end
+            -- GATED 2026-07-28: the native call succeeds but the minimal
+            -- init recipe crashes the process seconds later (headless
+            -- harness, access violation at -4: empty-array read). Not
+            -- shipping that to a live client. Re-enable once the spawnhook
+            -- capture supplies the game's real field recipe.
+            Role.ack(senderCtx, string.format(
+                "spawn is in R&D (native call works, init recipe pending - arm !pg spawnhook while pals spawn around you to capture it). Use: !pg become %s meanwhile", charId))
+            if true then return end
             local okNat, errNat = pcall(function()
                 PalgenesisNative_Spawn(charId, level,
                     loc.X + fwd.X * 500, loc.Y + fwd.Y * 500, loc.Z + 100)
@@ -1175,6 +1178,52 @@ function M.fullRun()
         Role.chat(ctx.playerCtx, "Palvolve full run: " .. tostring(msg))
         Log(string.format("[probe-finale-run] FAIL: %s", tostring(msg)))
     end
+end
+
+-- !pg spawnhook: ARM a log-only hook on PalCharacterManager:SpawnNewCharacter
+-- that dumps the InitParameter fields every real caller passes. This is the
+-- recipe capture for the native spawn: our minimal SaveParameter crashes the
+-- process (empty-array read), so instead of guessing Pocketpair's init
+-- requirements we read them off the game's own calls. Armed manually (hooks
+-- living through load paths are a crash risk - same reasoning as the radial
+-- probes). Walk where wild pals spawn, then read [probe-spawnhook] lines.
+local spawnHookArmed = false
+function M.armSpawnHook(senderCtx)
+    local Role = require("role")
+    if spawnHookArmed then
+        Role.ack(senderCtx, "spawnhook already armed - walk near wild spawns and check the log")
+        return
+    end
+    local ok, err = pcall(function()
+        RegisterHook("/Script/Pal.PalCharacterManager:SpawnNewCharacter", function(self, InitParameter, SpawnParameter, spawnCallback)
+            pcall(function()
+                local p = InitParameter:get()
+                local fields = {}
+                local function grab(name, fmt)
+                    pcall(function()
+                        local v = p[name]
+                        if type(v) == "userdata" and v.ToString then v = v:ToString() end
+                        fields[#fields + 1] = string.format("%s=%s", name, tostring(v))
+                    end)
+                end
+                grab("CharacterID"); grab("Gender"); grab("Level"); grab("Exp")
+                grab("IsPlayer"); grab("IsRarePal"); grab("CharacterClass")
+                grab("Talent_HP"); grab("Talent_Melee"); grab("Talent_Shot"); grab("Talent_Defense")
+                grab("FullStomach"); grab("PhysicalHealth"); grab("WorkerSick"); grab("DyingTimer")
+                pcall(function() fields[#fields + 1] = "Hp=" .. tostring(p.Hp.Value) end)
+                pcall(function() fields[#fields + 1] = "MaxHP=" .. tostring(p.MaxHP.Value) end)
+                pcall(function() fields[#fields + 1] = "MP=" .. tostring(p.MP.Value) end)
+                pcall(function() fields[#fields + 1] = "#EquipWaza=" .. tostring(#p.EquipWaza) end)
+                pcall(function() fields[#fields + 1] = "#MasteredWaza=" .. tostring(#p.MasteredWaza) end)
+                pcall(function() fields[#fields + 1] = "#PassiveSkillList=" .. tostring(#p.PassiveSkillList) end)
+                Log("[probe-spawnhook] " .. table.concat(fields, " "))
+            end)
+        end)
+    end)
+    spawnHookArmed = ok
+    Log(string.format("[probe-spawnhook] armed ok=%s%s", tostring(ok), ok and "" or (" err=" .. tostring(err))))
+    Role.ack(senderCtx, ok and "spawnhook armed - walk where wild pals spawn, every real spawn call gets logged"
+        or ("spawnhook failed to arm: " .. tostring(err)))
 end
 
 -- !pg moves: grant the SUMMONED pal its current species' level-up moves up to

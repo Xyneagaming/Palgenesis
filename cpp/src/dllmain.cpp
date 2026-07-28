@@ -167,7 +167,7 @@ namespace
     // harness 2026-07-28). Natively the delegate simply stays zeroed in the
     // parameter buffer, which is an ordinary unbound delegate.
     auto spawn_character(const std::wstring& CharId, int Level, double X, double Y, double Z,
-                         std::wstring& OutMsg) -> bool
+                         bool bInactive, std::wstring& OutMsg) -> bool
     {
         auto* Ctx = g_world_context.load();
         if (!Ctx)
@@ -233,6 +233,15 @@ namespace
         set_struct_member(P, STR("SpawnParameter"), STR("SpawnCollisionHandlingOverride"), &CollisionOverride, sizeof(uint8));
         set_struct_member(P, STR("SpawnParameter"), STR("bNeedAdjustToFloor"), &True8, sizeof(uint8));
         set_struct_member(P, STR("SpawnParameter"), STR("AdjustUpOffset"), &AdjustUp, sizeof(float));
+        // Inactive spawn: individual + handle only, NO actor. The headless
+        // harness uses this - an empty dedicated server streams no terrain,
+        // and an active spawn into unloaded world killed the process
+        // (harness 2026-07-28). Clients spawn active: the world around a
+        // player is always loaded.
+        if (bInactive)
+        {
+            set_struct_member(P, STR("SpawnParameter"), STR("bStartAsInactivePalCharacter"), &True8, sizeof(uint8));
+        }
         // NetworkOwner/Owner/Name/ControllerClass/spawnCallback stay zeroed:
         // null owners, name None, default controller, unbound delegate.
 
@@ -246,8 +255,30 @@ namespace
         auto* Handle = P.Get<UObject*>(STR("ReturnValue"));
         OutMsg = Handle ? (STR("spawn requested, handle ") + Handle->GetName())
                         : STR("spawn requested (no handle returned - watch the roster)");
-        Output::send<LogLevel::Normal>(STR("[PalvolveNative] PalgenesisSpawn {} lvl {} at ({}, {}, {}): {}\n"),
-                                       CharId, LevelByte, X, Y, Z, OutMsg);
+        // Identity readback through the handle: the verify comes from the
+        // spawned individual itself, not from trusting the request.
+        if (Handle)
+        {
+            auto* GetParamFn = find_fn(STR("/Script/Pal.PalIndividualCharacterHandle:TryGetIndividualParameter"));
+            if (GetParamFn)
+            {
+                FParamBuffer H{GetParamFn};
+                H.Call(Handle);
+                if (auto* Param = H.Get<UObject*>(STR("ReturnValue")))
+                {
+                    auto* GetIdFn = find_fn(STR("/Script/Pal.PalIndividualCharacterParameter:GetCharacterID"));
+                    if (GetIdFn)
+                    {
+                        FParamBuffer I{GetIdFn};
+                        I.Call(Param);
+                        const FName Id = I.Get<FName>(STR("ReturnValue"));
+                        OutMsg += STR(", id=") + Id.ToString();
+                    }
+                }
+            }
+        }
+        Output::send<LogLevel::Normal>(STR("[PalvolveNative] PalgenesisSpawn {} lvl {} at ({}, {}, {}) inactive={}: {}\n"),
+                                       CharId, LevelByte, X, Y, Z, bInactive, OutMsg);
         return true;
     }
 
@@ -571,8 +602,9 @@ class PalvolveNative : public CppUserModBase
             const double X = next_number(0.0);
             const double Y = next_number(0.0);
             const double Z = next_number(0.0);
+            const bool bInactive = next_number(0.0) != 0.0; // 6th arg: 1 = no actor (headless)
             std::wstring Msg;
-            const bool Ok = spawn_character(CharId, Level, X, Y, Z, Msg);
+            const bool Ok = spawn_character(CharId, Level, X, Y, Z, bInactive, Msg);
             L.set_bool(Ok);
             L.set_string(to_string(Msg));
             return 2;

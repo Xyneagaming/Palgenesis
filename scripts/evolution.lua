@@ -2436,6 +2436,13 @@ function Evolution.init()
                 local okProbes, probes = pcall(require, "probes")
                 if okProbes and probes.grantMoves then probes.grantMoves(senderCtx) end
             end,
+            -- !pg spawnhook: arm the SpawnNewCharacter recipe-capture hook
+            -- (log-only; the native spawn's missing init recipe)
+            spawnhook = function(senderCtx)
+                if not Config.devMode then return end
+                local okProbes, probes = pcall(require, "probes")
+                if okProbes and probes.armSpawnHook then probes.armSpawnHook(senderCtx) end
+            end,
             -- !pg fullrun: the 12-stage random-evolution FX test. CHAT-ONLY:
             -- it lived on BACKSPACE, and keybinds fire while the chat box has
             -- focus - every typo correction rolled a random evolution.
