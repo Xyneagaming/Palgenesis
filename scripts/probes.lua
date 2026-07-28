@@ -467,26 +467,26 @@ function M.spawnPal(senderCtx, args)
                 bAdjustShortRayLength = false,
                 bStartAsInactivePalCharacter = false,
             }
-            -- delegate-argument ladder: UE4SS's tolerance for BlueprintCallable
-            -- delegate params is undocumented - try the candidates and log each
-            local spawned = false
-            for _, cbKind in ipairs({ "nil", "emptytable", "zero" }) do
-                local okCall, errCall = pcall(function()
-                    local handle
-                    if cbKind == "nil" then handle = charman:SpawnNewCharacter(init, spawnParam, nil)
-                    elseif cbKind == "emptytable" then handle = charman:SpawnNewCharacter(init, spawnParam, {})
-                    else handle = charman:SpawnNewCharacter(init, spawnParam, 0) end
-                    Log(string.format("[probe-spawn] SpawnNewCharacter cb=%s handle=%s valid=%s",
-                        cbKind, tostring(handle), tostring(handle and handle.IsValid and handle:IsValid())))
-                end)
-                if okCall then spawned = true break end
-                Log(string.format("[probe-spawn] SpawnNewCharacter cb=%s REJECTED: %s", cbKind, tostring(errCall)))
-            end
-            if not spawned then
-                Role.ack(senderCtx, "SpawnNewCharacter rejected every delegate form - log has the errors; use !pg become meanwhile")
+            -- SpawnNewCharacter is UNREACHABLE from Lua (harness-proven
+            -- 2026-07-28): delegate arg as nil/{}/0 fail-fasts the process
+            -- (0xC0000409, uncatchable) and omitting it is rejected. The
+            -- future lane is PalgenesisNative_Spawn in the C++ companion;
+            -- until that is built, this command routes the user to become.
+            if type(PalgenesisNative_Spawn) ~= "function" then
+                Role.ack(senderCtx, string.format(
+                    "true spawn needs the native bridge (not built yet). Use: !pg become %s - morphs the nearest wild pal, sphere it to own the new species", charId))
                 return
             end
-            Log(string.format("[probe-spawn] SpawnNewCharacter %s lvl %d requested", charId, level))
+            local okNat, errNat = pcall(function()
+                PalgenesisNative_Spawn(charId, level,
+                    loc.X + fwd.X * 500, loc.Y + fwd.Y * 500, loc.Z + 100)
+            end)
+            if not okNat then
+                Log("[probe-spawn] native spawn FAIL: " .. tostring(errNat))
+                Role.ack(senderCtx, "native spawn failed - see log; use !pg become meanwhile")
+                return
+            end
+            Log(string.format("[probe-spawn] native spawn %s lvl %d requested", charId, level))
             -- Watch for the newcomer OF THE REQUESTED SPECIES, then fetch it
             -- once. First field test taught this loop three lessons the hard
             -- way: (1) a flag set inside ExecuteInGameThread is NOT visible
