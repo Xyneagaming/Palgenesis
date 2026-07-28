@@ -148,7 +148,7 @@ namespace
     {
         auto* Prop = CastField<FStructProperty>(Buf.Find(StructParam));
         if (!Prop) return false;
-        auto* Struct = Prop->GetStruct();
+        auto Struct = Prop->GetStruct(); // TObjectPtr<UScriptStruct>
         if (!Struct) return false;
         for (FProperty* M : Struct->ForEachProperty())
         {
