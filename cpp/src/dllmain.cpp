@@ -166,8 +166,37 @@ namespace
     // each fail-fast the process, 0xC0000409; measured on the headless
     // harness 2026-07-28). Natively the delegate simply stays zeroed in the
     // parameter buffer, which is an ordinary unbound delegate.
+    // Writes a ONE-element array into an array-typed member of a struct param.
+    // The element block is malloc'd here and freed by the caller after the
+    // ProcessEvent (the callee works on its own deep copy of the frame).
+    auto set_struct_array_member(FParamBuffer& Buf, const wchar_t* StructParam, const wchar_t* Member,
+                                 uint64 ElementValue, void*& OutBlock) -> bool
+    {
+        auto* Prop = CastField<FStructProperty>(Buf.Find(StructParam));
+        if (!Prop) return false;
+        auto Struct = Prop->GetStruct();
+        if (!Struct) return false;
+        for (FProperty* M : Struct->ForEachProperty())
+        {
+            if (M->GetName() != Member) continue;
+            auto* ArrayProp = CastField<FArrayProperty>(M);
+            if (!ArrayProp) return false;
+            auto* Inner = ArrayProp->GetInner();
+            if (!Inner) return false;
+            const int32 ElemSize = Inner->GetSize();
+            if (ElemSize <= 0 || ElemSize > 8) return false;
+            OutBlock = FMemory::Malloc(static_cast<size_t>(ElemSize));
+            std::memcpy(OutBlock, &ElementValue, static_cast<size_t>(ElemSize));
+            struct { void* Data; int32 Num; int32 Max; } Header{OutBlock, 1, 1};
+            std::memcpy(Buf.Data.data() + Prop->GetOffset_Internal() + M->GetOffset_Internal(),
+                        &Header, sizeof(Header));
+            return true;
+        }
+        return false;
+    }
+
     auto spawn_character(const std::wstring& CharId, int Level, double X, double Y, double Z,
-                         bool bInactive, std::wstring& OutMsg) -> bool
+                         bool bInactive, uint64 EquipWazaValue, std::wstring& OutMsg) -> bool
     {
         auto* Ctx = g_world_context.load();
         if (!Ctx)
@@ -211,6 +240,11 @@ namespace
         const float Stomach = 150.0f;
         const int64 HpFixed = static_cast<int64>(1000) * (100 + 25 * LevelByte);
 
+        // Field recipe copied from 18 captured REAL spawn calls (!pg spawnhook,
+        // 2026-07-28): Gender=1, Exp=0, FullStomach=150, Hp pre-scaled fixed-
+        // point, MaxHP left 0 (engine derives it), MP=100000, and EquipWaza
+        // ALWAYS carries at least one entry - the empty array was the crash
+        // (access violation reading -4 = a [-1] index on it downstream).
         bool bInit = true;
         bInit &= set_struct_member(P, STR("InitParameter"), STR("CharacterID"), &CharName, sizeof(FName));
         bInit &= set_struct_member(P, STR("InitParameter"), STR("Gender"), &Gender, sizeof(uint8));
@@ -221,7 +255,13 @@ namespace
         set_struct_member(P, STR("InitParameter"), STR("Talent_Defense"), &Talent, sizeof(uint8));
         set_struct_member(P, STR("InitParameter"), STR("FullStomach"), &Stomach, sizeof(float));
         set_struct_member(P, STR("InitParameter"), STR("Hp"), &HpFixed, sizeof(int64));
-        set_struct_member(P, STR("InitParameter"), STR("MaxHP"), &HpFixed, sizeof(int64));
+        const int64 MpFixed = 100000;
+        set_struct_member(P, STR("InitParameter"), STR("MP"), &MpFixed, sizeof(int64));
+        void* WazaBlock = nullptr;
+        if (EquipWazaValue > 0)
+        {
+            bInit &= set_struct_array_member(P, STR("InitParameter"), STR("EquipWaza"), EquipWazaValue, WazaBlock);
+        }
 
         const double Loc[3] = {X, Y, Z};
         const double Scale[3] = {1.0, 1.0, 1.0};
@@ -247,11 +287,13 @@ namespace
 
         if (!bInit)
         {
+            if (WazaBlock) FMemory::Free(WazaBlock);
             OutMsg = STR("save/spawn parameter layout changed (game patch?) - refusing a garbage spawn");
             return false;
         }
 
         P.Call(Manager);
+        if (WazaBlock) FMemory::Free(WazaBlock);
         auto* Handle = P.Get<UObject*>(STR("ReturnValue"));
         OutMsg = Handle ? (STR("spawn requested, handle ") + Handle->GetName())
                         : STR("spawn requested (no handle returned - watch the roster)");
@@ -602,9 +644,10 @@ class PalvolveNative : public CppUserModBase
             const double X = next_number(0.0);
             const double Y = next_number(0.0);
             const double Z = next_number(0.0);
-            const bool bInactive = next_number(0.0) != 0.0; // 6th arg: 1 = no actor (headless)
+            const bool bInactive = next_number(0.0) != 0.0;          // 6th arg: 1 = no actor (headless)
+            const uint64 EquipWaza = static_cast<uint64>(next_number(0.0)); // 7th arg: EPalWazaID value, 0 = none
             std::wstring Msg;
-            const bool Ok = spawn_character(CharId, Level, X, Y, Z, bInactive, Msg);
+            const bool Ok = spawn_character(CharId, Level, X, Y, Z, bInactive, EquipWaza, Msg);
             L.set_bool(Ok);
             L.set_string(to_string(Msg));
             return 2;

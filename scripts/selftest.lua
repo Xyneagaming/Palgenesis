@@ -96,20 +96,6 @@ local function runWorldTests(wc)
     -- needs VS2022+Rust+Epic-linked GitHub for the RE-UE4SS tree).
     -- Actor instantiation of custom pals is meanwhile field-proven via the
     -- evolve respawn path (client, 2026-07-28).
-    -- STATUS 2026-07-28 evening: the native bridge EXISTS and the call
-    -- SUCCEEDS (handle returned, no fail-fast), but a minimal SaveParameter
-    -- kills the server seconds later (EXCEPTION_ACCESS_VIOLATION reading
-    -- 0xfffffffffffffffc - an empty-array [-1] read somewhere in the game's
-    -- processing; T3's readback also found the parameter never finished
-    -- initializing). The game's own callers clearly pass a fuller recipe.
-    -- NEXT: the !pg spawnhook probe dumps the fields real spawns pass;
-    -- copy that recipe into spawn_character, then re-enable this.
-    if true then
-        Log("SKIP T2-spawn: native call works but the init recipe is incomplete (crash) - pending spawnhook capture")
-        Log("SKIP T3-spawn-ident: depends on T2")
-        finish("T2/T3 skipped: init recipe pending")
-        return
-    end
     if type(PalgenesisNative_Spawn) ~= "function" then
         Log("SKIP T2-spawn: needs PalgenesisNative_Spawn (native bridge not built)")
         Log("SKIP T3-spawn-ident: depends on T2")
@@ -122,7 +108,24 @@ local function runWorldTests(wc)
     -- proof lives client-side, where the world around a player is loaded.
     -- Identity comes from the native readback: the handle's own individual
     -- parameter reports its CharacterID in the message.
-    local okNat, natOk, natMsg = pcall(PalgenesisNative_Spawn, "Foxgloam", 10, -361900, 270100, 9000, 1)
+    -- EquipWaza: real spawns ALWAYS carry >=1 equipped move (the 18-call
+    -- spawnhook capture); pass the species' first learnable waza. The db's
+    -- TMap out-param marshals as a wrapper table keyed OutMap.
+    local firstWaza, bestLvl = 0, 999
+    pcall(function()
+        local db = util:GetWazaDatabase(wc)
+        local out = {}
+        db:GetMasterrableWaza_BetweenLevel(FName("Foxgloam"), 1, 60, out)
+        for k, v in pairs(out.OutMap or out) do
+            local kk, vv = k, v
+            if type(kk) == "userdata" then pcall(function() kk = kk:get() end) end
+            if type(vv) == "userdata" then pcall(function() vv = vv:get() end) end
+            kk, vv = tonumber(kk), tonumber(vv)
+            if kk and vv and vv < bestLvl then bestLvl = vv; firstWaza = kk end
+        end
+    end)
+    Log(string.format("first learnable waza enum=%d (at level %d)", firstWaza, bestLvl))
+    local okNat, natOk, natMsg = pcall(PalgenesisNative_Spawn, "Foxgloam", 10, -361900, 270100, 9000, 1, firstWaza)
     Log(string.format("PalgenesisNative_Spawn ok=%s result=%s msg=%s",
         tostring(okNat), tostring(natOk), tostring(natMsg)))
     if not (okNat and natOk) then

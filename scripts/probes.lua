@@ -472,24 +472,37 @@ function M.spawnPal(senderCtx, args)
             -- (0xC0000409, uncatchable) and omitting it is rejected. The
             -- future lane is PalgenesisNative_Spawn in the C++ companion;
             -- until that is built, this command routes the user to become.
-            -- GATED 2026-07-28: the native call succeeds but the minimal
-            -- init recipe crashes the process seconds later (headless
-            -- harness, access violation at -4: empty-array read). Not
-            -- shipping that to a live client. Re-enable once the spawnhook
-            -- capture supplies the game's real field recipe.
-            Role.ack(senderCtx, string.format(
-                "spawn is in R&D (native call works, init recipe pending - arm !pg spawnhook while pals spawn around you to capture it). Use: !pg become %s meanwhile", charId))
-            if true then return end
+            if type(PalgenesisNative_Spawn) ~= "function" then
+                Role.ack(senderCtx, string.format(
+                    "native bridge missing - use !pg become %s meanwhile", charId))
+                return
+            end
+            -- EquipWaza recipe: real spawns always carry >=1 equipped move
+            -- (18-call spawnhook capture 2026-07-28; the empty array was the
+            -- crash). Pass the species' first learnable waza.
+            local firstWaza, bestLvl = 0, 999
+            pcall(function()
+                local db = util:GetWazaDatabase(player)
+                local out = {}
+                db:GetMasterrableWaza_BetweenLevel(FName(charId), 1, 60, out)
+                for k, v in pairs(out.OutMap or out) do
+                    local kk, vv = k, v
+                    if type(kk) == "userdata" then pcall(function() kk = kk:get() end) end
+                    if type(vv) == "userdata" then pcall(function() vv = vv:get() end) end
+                    kk, vv = tonumber(kk), tonumber(vv)
+                    if kk and vv and vv < bestLvl then bestLvl = vv; firstWaza = kk end
+                end
+            end)
             local okNat, errNat = pcall(function()
                 PalgenesisNative_Spawn(charId, level,
-                    loc.X + fwd.X * 500, loc.Y + fwd.Y * 500, loc.Z + 100)
+                    loc.X + fwd.X * 500, loc.Y + fwd.Y * 500, loc.Z + 100, 0, firstWaza)
             end)
             if not okNat then
                 Log("[probe-spawn] native spawn FAIL: " .. tostring(errNat))
                 Role.ack(senderCtx, "native spawn failed - see log; use !pg become meanwhile")
                 return
             end
-            Log(string.format("[probe-spawn] native spawn %s lvl %d requested", charId, level))
+            Log(string.format("[probe-spawn] native spawn %s lvl %d requested (waza enum %d)", charId, level, firstWaza))
             -- Watch for the newcomer OF THE REQUESTED SPECIES, then fetch it
             -- once. First field test taught this loop three lessons the hard
             -- way: (1) a flag set inside ExecuteInGameThread is NOT visible
