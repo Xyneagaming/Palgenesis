@@ -95,7 +95,7 @@ RowName,ParentTribeA,ParentGenderA,ParentTribeB,ParentGenderB,ChildCharacterID
 95,WhiteTiger,None,FeatherOstrich,None,WhiteTiger_Ground
 96,FengyunDeeper,None,BlueThunderHorse,None,FengyunDeeper_Electric
 97,BerryGoat,None,PurpleSpider,None,BerryGoat_Dark
-98,Werewolf,None,MopKing,None,Werewolf_Ice
+98,Werewolf,None,MopKing,None,WereWolf_Ice
 99,Horus,None,Umihebi,None,Horus_Water
 100,PinkRabbit,None,LittleBriarRose,None,PinkRabbit_Grass
 101,HerculesBeetle,None,DrillGame,None,HerculesBeetle_Ground
@@ -105,7 +105,7 @@ RowName,ParentTribeA,ParentGenderA,ParentTribeB,ParentGenderB,ChildCharacterID
 105,WhiteTiger_Ground,None,WhiteTiger_Ground,None,WhiteTiger_Ground
 106,FengyunDeeper_Electric,None,FengyunDeeper_Electric,None,FengyunDeeper_Electric
 107,BerryGoat_Dark,None,BerryGoat_Dark,None,BerryGoat_Dark
-108,Werewolf_Ice,None,Werewolf_Ice,None,Werewolf_Ice
+108,Werewolf_Ice,None,Werewolf_Ice,None,WereWolf_Ice
 109,Horus_Water,None,Horus_Water,None,Horus_Water
 110,PinkRabbit_Grass,None,PinkRabbit_Grass,None,PinkRabbit_Grass
 111,HerculesBeetle_Ground,None,HerculesBeetle_Ground,None,HerculesBeetle_Ground

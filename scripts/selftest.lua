@@ -29,21 +29,27 @@ local function finish(note)
         note and (" (" .. note .. ")") or ""))
 end
 
--- T0: config pair (pure Lua, no world needed)
+-- T0: config pairs for the whole Foxfire line (pure Lua, no world needed)
 local function testConfigPair()
     local ok, cfg = pcall(require, "config")
     if not (ok and cfg and cfg.map) then
         verdict("T0-config-pair", false, "config/map not loadable")
         return
     end
-    local found = nil
-    for _, p in ipairs(cfg.map) do
-        if p.to == "Foxgloam" then found = p break end
+    for _, want in ipairs({
+        { to = "Foxgloam", from = "Kitsunebi" },
+        { to = "Foxfyre",  from = "Foxgloam" },
+    }) do
+        local found = nil
+        for _, p in ipairs(cfg.map) do
+            if p.to == want.to and p.from == want.from then found = p break end
+        end
+        verdict("T0-config-pair-" .. want.to, found ~= nil, found
+            and string.format("from=%s category=%s minLevel=%s conds=%d enabled=%s",
+                tostring(found.from), tostring(found.category), tostring(found.minLevel),
+                found.conditions and #found.conditions or 0, tostring(found.enabled))
+            or string.format("no pair %s->%s in config map", want.from, want.to))
     end
-    verdict("T0-config-pair", found ~= nil, found
-        and string.format("from=%s category=%s minLevel=%s enabled=%s",
-            tostring(found.from), tostring(found.category), tostring(found.minLevel), tostring(found.enabled))
-        or "no pair with to=Foxgloam in config map")
 end
 
 -- world-dependent tests, run once a world context exists
@@ -68,25 +74,29 @@ local function runWorldTests(wc)
     -- table (first run's db-API count returned 1 with no loader errors -
     -- the TMap out-param marshaling is the suspect, so it is demoted to a
     -- secondary reading below).
-    local rowCount = -1
+    local counts = { Foxgloam = -1, Foxfyre = -1 }
     pcall(function()
         local dt = StaticFindObject("/Game/Pal/DataTable/Waza/DT_WazaMasterLevel.DT_WazaMasterLevel")
         local lib = StaticFindObject("/Script/Engine.Default__DataTableFunctionLibrary")
         if dt and dt:IsValid() and lib and lib:IsValid() then
             local names = {}
             lib:GetDataTableRowNames(dt, names)
-            rowCount = 0
+            counts.Foxgloam, counts.Foxfyre = 0, 0
             for i = 1, #names do
                 local n = names[i]
                 if type(n) == "userdata" then pcall(function() n = n:get() end) end
                 local s = tostring(n)
                 pcall(function() s = n:ToString() end)
-                if s:match("^Foxgloam%d+$") then rowCount = rowCount + 1 end
+                for species in pairs(counts) do
+                    if s:match("^" .. species .. "%d+$") then counts[species] = counts[species] + 1 end
+                end
             end
         end
     end)
-    verdict("T1-waza-rows", rowCount == 7,
-        string.format("Foxgloam* rows in DT_WazaMasterLevel: %d (expected 7)", rowCount))
+    for species, c in pairs(counts) do
+        verdict("T1-waza-rows-" .. species, c == 7,
+            string.format("%s* rows in DT_WazaMasterLevel: %d (expected 7)", species, c))
+    end
     -- secondary: the db API's view (known-suspect marshaling, logged for comparison)
     pcall(function()
         local db = util:GetWazaDatabase(wc)

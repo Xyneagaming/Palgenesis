@@ -168,6 +168,53 @@ local function unlockCatchTech(targetId, playerCtx)
     end
 end
 
+-- Evolution-move grant (Config.grantMovesOnEvolve): master the TARGET species'
+-- level-up waza up to the pal's current level, the moment the swap succeeds.
+-- The game only grants species moves when a level threshold is CROSSED, so
+-- without this an evolved pal carries a stale kit forever. Same save-array
+-- write as !pg moves (probes.lua): no public AddMasteredWaza exists. Equipped
+-- slots are left alone - the player's chosen three persist; new moves become
+-- selectable, not forced. worldObj = any live world-context object (the
+-- actor headless, the player controller on the client path where the old
+-- actor is already torn down).
+local function grantSpeciesMoves(param, worldObj)
+    if not Config.grantMovesOnEvolve then return end
+    local granted, failed = 0, 0
+    local ok, err = pcall(function()
+        local util = StaticFindObject("/Script/Pal.Default__PalUtility")
+        local db = util:GetWazaDatabase(worldObj)
+        if not (db and db:IsValid()) then error("no waza database") end
+        local id = param:GetCharacterID()
+        local lvl = param:GetLevel()
+        local out = {}
+        db:GetMasterrableWaza_BetweenLevel(id, 1, lvl, out)
+        -- the TMap out-param marshals as a wrapper table keyed OutMap on some
+        -- paths and as the map itself on others (selftest 2026-07-28)
+        for waza, _ in pairs(out.OutMap or out) do
+            local w = waza
+            if type(w) == "userdata" then pcall(function() w = w:get() end) end
+            if type(w) == "number" then
+                local has = false
+                pcall(function() has = param:HasMasteredWaza(w) end)
+                if not has then
+                    local okM = pcall(function()
+                        local arr = param.SaveParameter.MasteredWaza
+                        arr[#arr + 1] = w
+                        local arr2 = param.SaveParameterMirror.MasteredWaza
+                        arr2[#arr2 + 1] = w
+                    end)
+                    if okM then granted = granted + 1 else failed = failed + 1 end
+                end
+            end
+        end
+    end)
+    if not ok then
+        Log("Evolution-move grant skipped: " .. tostring(err))
+    elseif granted > 0 or failed > 0 then
+        Log(string.format("Evolution moves granted: +%d mastered, %d failed", granted, failed))
+    end
+end
+
 local function individualKey(param)
     local key = ""
     pcall(function() key = guidString(param.IndividualId.InstanceId) end)
@@ -993,6 +1040,11 @@ local function performEvolution(p)
         -- Always the unprefixed id: the capture record is keyed by EPalTribeID, which has one
         -- entry per species and none for the BOSS_ (alpha) rows, exactly like the Paldeck.
         unlockCatchTech(pair.to, playerCtx)
+        -- Evolution-move moment: the new species' kit arrives WITH the new
+        -- body. On the client path the old actor is torn down by now, so the
+        -- player controller carries the world context.
+        grantSpeciesMoves(param,
+            (actor and actor:IsValid()) and actor or (playerCtx and playerCtx.pc))
 
         -- Headless (dedicated server): the authoritative param swap is done.
         -- Do NOT touch the otomo lifecycle - on this path the pal was never

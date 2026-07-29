@@ -205,6 +205,8 @@ function M.run()
         { match = "DT_WazaDataTable%.",       label = "waza_data",             cand = WAZA_CANDIDATES },
         { match = "DT_WazaMasterLevel%.",     label = "waza_master_level",     cand = LEVEL_CANDIDATES },
         { match = "DT_PalCombiUnique%.",      label = "combi_unique",          cand = { "ParentTribeA", "ParentTribeB", "ChildCharacterID" } },
+        { match = "DT_PalBPClass_Common%.",   label = "bp_class",              cand = { "BPClassSoft" } },
+        { match = "DT_PalCharacterIconDataTable_Common%.", label = "pal_icons", cand = { "Icon" } },
     }
     local dumped, totalRows = 0, 0
     for _, p in ipairs(plan) do

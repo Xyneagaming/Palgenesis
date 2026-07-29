@@ -32,6 +32,13 @@ local Config = {
     -- dlls/main.dll; without it this is skipped and evolution works as before.
     unlockCatchTech = true,
 
+    -- Grant the TARGET species' level-up moves (up to current level) on a
+    -- successful evolution - Pokemon's "evolution move" moment. Without this
+    -- the game only grants moves when a level threshold is CROSSED, so an
+    -- evolved pal keeps a stale kit forever (the reason !pg moves exists).
+    -- Added 2026-07-28 for the Foxfire line; applies to every pair.
+    grantMovesOnEvolve = true,
+
     -- Server check: a connected client asks the host whether Palvolve runs
     -- server-side and which version. Without a host-side answer, evolution and
     -- the bench recipe patch are disabled for the session and the client is told
@@ -1001,14 +1008,29 @@ local Config = {
     {
         from = "Kitsunebi",
         to = "Foxgloam",
-        category = "adaptation",
-        minLevel = 1,
-        stone = "adaptation",
+        category = "evolution",
+        minLevel = 15,
+        stone = "evolution",
+        conditions = { "night" },
         enabled = true
-    }, -- Foxparks -> Foxgloam (Nyx custom dark form; pal row added by the
-       -- NyxForms PalSchema mod - keep this pair BEFORE the Cryst pair so the
-       -- low-level test path resolves first. minLevel 1 is the test dial;
-       -- raise it when the form graduates to a real balance pass.
+    }, -- Foxparks -> Foxgloam, stage 2 of the Foxfire line (kb/LINE-FOXFIRE.md).
+       -- Graduated from the minLevel-1 test dial 2026-07-28: level 15 (~25% of
+       -- cap, the KB's flagship rhythm) + night (the fox that walks after
+       -- dark; thematic AND readable in the evolve UI). Custom rows ship in
+       -- the NyxForms PalSchema mod. Keep BEFORE the Cryst pair.
+    {
+        from = "Foxgloam",
+        to = "Foxfyre",
+        category = "evolution",
+        minLevel = 36,
+        stone = "evolution",
+        conditions = { "night", "knowsMove:Fire" },
+        enabled = true
+    }, -- Foxgloam -> Foxfyre, apex of the line: ridable Blazehowl-Noct-class
+       -- (Sayber's ask 2026-07-28). Level 36 (~60% of cap) + night + the fox
+       -- must still KNOW a fire move: mastered waza persist through the swap,
+       -- so a line evolved from Foxparks keeps its flame unless the player
+       -- threw it away - the build steers the evolution (KB Tyrogue rule).
     {
         from = "Kitsunebi",
         to = "Kitsunebi_Ice",
