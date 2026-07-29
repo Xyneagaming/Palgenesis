@@ -110,6 +110,18 @@ local function runWorldTests(wc)
         Log(string.format("T1-secondary db-api count=%d (table-read above is authoritative)", c))
     end)
 
+    -- T4: species resolver (the phantom-species guard, added after the
+    -- 2026-07-28 chimera): lowercase canonicalizes, garbage refuses.
+    pcall(function()
+        local Evolution = require("evolution")
+        local canon1 = Evolution.resolveSpeciesId("foxfyre")
+        local canon2, why2 = Evolution.resolveSpeciesId("definitely_not_a_pal")
+        verdict("T4-species-resolver",
+            canon1 == "Foxfyre" and canon2 == nil and why2 == "unknown",
+            string.format("'foxfyre'->%s, garbage->%s/%s",
+                tostring(canon1), tostring(canon2), tostring(why2)))
+    end)
+
     -- T2/T3: spawn a Foxgloam and identify it.
     -- STATUS 2026-07-28: SKIPPED pending the native bridge. The harness
     -- proved every Lua-side delegate form dead: nil, {} and 0 all fail-fast

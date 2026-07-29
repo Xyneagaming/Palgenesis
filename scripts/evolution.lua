@@ -1984,6 +1984,42 @@ end
 -- into toId with NO gates - no level/alpha/condition/cost checks and no
 -- configured pair needed. The synthetic pair exists only inside this call;
 -- costs still resolve, so the probe keeps free mode forced.
+-- Species-id canonicalizer/validator against DT_PalMonsterParameter row names,
+-- the ground truth of what the game can spawn (includes PalSchema rows, so
+-- custom species validate on builds that actually carry them). Returns
+-- (canonicalId, nil) when known, (nil, "unknown") when absent, and
+-- (nil, "unreadable") when the table cannot be read - callers must refuse the
+-- swap in both nil cases (see the 2026-07-28 phantom-species chimera).
+local speciesIdCache = nil
+function Evolution.resolveSpeciesId(id)
+    if type(id) ~= "string" or id == "" then return nil, "unknown" end
+    if not speciesIdCache then
+        local cache = {}
+        local ok = pcall(function()
+            local dt = StaticFindObject("/Game/Pal/DataTable/Character/DT_PalMonsterParameter.DT_PalMonsterParameter")
+            local lib = StaticFindObject("/Script/Engine.Default__DataTableFunctionLibrary")
+            if not (dt and dt:IsValid() and lib and lib:IsValid()) then error("dt/lib missing") end
+            local names = {}
+            lib:GetDataTableRowNames(dt, names)
+            for i = 1, #names do
+                local n = names[i]
+                if type(n) == "userdata" then pcall(function() n = n:get() end) end
+                local s = tostring(n)
+                pcall(function() s = n:ToString() end)
+                if s ~= "" then cache[s:lower()] = s end
+            end
+        end)
+        if not ok or next(cache) == nil then
+            Log("resolveSpeciesId: DT_PalMonsterParameter unreadable - refusing to validate")
+            return nil, "unreadable"
+        end
+        speciesIdCache = cache
+    end
+    local canon = speciesIdCache[id:lower()]
+    if canon then return canon, nil end
+    return nil, "unknown"
+end
+
 function Evolution.debugEvolveTo(toId)
     if not Config.devMode then return false, "devMode off" end
     -- HARD authority gate: performEvolution manipulates the actor
@@ -2458,16 +2494,25 @@ function Evolution.init()
                     Role.ack(senderCtx, "usage: !pg evolve <CharacterID>")
                     return
                 end
-                -- canonicalize the id's case against the config map so the
-                -- verify compares like against like ("foxgloam" -> "Foxgloam")
-                local lower = target:lower()
-                for _, p in ipairs(Config.map or {}) do
-                    if p.from and p.from:lower() == lower then target = p.from break end
-                    if p.to and p.to:lower() == lower then target = p.to break end
+                -- Canonicalize AND validate against DT_PalMonsterParameter row
+                -- names - the ground truth of species the game can actually
+                -- spawn. Guard paid for 2026-07-28: '!pg evolve foxfyre' on a
+                -- build without the Foxfyre row data-swapped a pal into a
+                -- species with no BP class; the respawn pump spun 17 attempts
+                -- and the rescue left a chimera (SheepBall body, phantom id)
+                -- that later summoned as a physics glitch. Never rename a pal
+                -- into an id the DT cannot vouch for.
+                local canon, why = Evolution.resolveSpeciesId(target)
+                if not canon then
+                    Role.ack(senderCtx, why == "unreadable"
+                        and "evolve: species table unreadable, refusing a blind swap - check the log"
+                        or string.format(
+                            "evolve: unknown species '%s' - no DT_PalMonsterParameter row (typo, or this build lacks the mod row)", target))
+                    return
                 end
                 local okProbes, probes = pcall(require, "probes")
                 if okProbes and probes.ensureFreeMode then probes.ensureFreeMode() end
-                local ok, msg = Evolution.debugEvolveTo(target)
+                local ok, msg = Evolution.debugEvolveTo(canon)
                 if not ok then Role.ack(senderCtx, "evolve: " .. tostring(msg)) end
             end,
             -- !pg become <CharacterID>: morph the NEAREST WILD pal into the
@@ -2478,6 +2523,18 @@ function Evolution.init()
             -- vanilla Kitsunebi never materialized either).
             become = function(senderCtx, args)
                 if not Config.devMode then return end
+                -- same species guard as evolve: a wild pal renamed into an id
+                -- the DT cannot vouch for is an uncatchable chimera in the world
+                if args and args[1] then
+                    local canon, why = Evolution.resolveSpeciesId(args[1])
+                    if not canon then
+                        Role.ack(senderCtx, why == "unreadable"
+                            and "become: species table unreadable, refusing"
+                            or string.format("become: unknown species '%s'", tostring(args[1])))
+                        return
+                    end
+                    args[1] = canon
+                end
                 local okProbes, probes = pcall(require, "probes")
                 if okProbes and probes.becomePal then probes.becomePal(senderCtx, args) end
             end,
