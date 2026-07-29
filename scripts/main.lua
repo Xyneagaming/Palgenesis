@@ -107,6 +107,17 @@ if okCfg and cfg.devMode then
     end
 end
 
+-- Runtime reskin (Palgenesis): custom-species looks without cooked BPs.
+-- Dormant until the Stage-1 texture pak is mounted; see reskin.lua.
+do
+    local okRs, rs = pcall(require, "reskin")
+    if okRs and rs and rs.start then
+        pcall(rs.start)
+    elseif not okRs then
+        Log("reskin failed to load: " .. tostring(rs))
+    end
+end
+
 -- Headless selftest (Palgenesis): armed ONLY by the test runner via the
 -- PALGENESIS_SELFTEST=1 environment variable, so a normal boot (client or
 -- real server) never runs it. See selftest.lua and tools/palserver-test.ps1
