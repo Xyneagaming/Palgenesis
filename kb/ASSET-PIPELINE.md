@@ -48,8 +48,14 @@ visual rule "evolved forms keep the base body plan" is cheap: same donor, minima
 
 ## Staged path (each stage shippable)
 
-- **Stage 0 - icon + data row** [we are here]: `$resource` PNG icon for Foxgloam today,
-  zero UE.
+- **Stage 0 - icon + data row** [DONE 2026-07-29 for both forms]: custom `$resource` icons
+  live (boot-verified "Registered Image Resource"). Extraction is OURS now: **palex**
+  (D:\Nyx\palex, CUE4Parse CLI - list/tex/raw/mesh vs Pal-Windows.pak, 185k files,
+  unencrypted, Mappings.usmap 1.0 from PalworldModding/UsefulFiles). FModel GUI never
+  needed. Recolor dial: vault tools/recolor_foxline.py (HSV band transform; the flame/coat
+  split is by HUE - flames are yellower than coat, v1 shipped a neon fox). Preview proof:
+  recolored body on the real mesh via palex mesh -> glb -> headless Blender
+  (D:\Nyx\palex\out\render\).
 - **Stage 1 - true retextured variant** (the PalVariety pattern): one-time UE `Pal` project
   setup; duplicate Foxparks' material instances with recolored textures (keep the vanilla
   parent material so it inherits the game's shader/look), duplicate `BP_Kitsunebi` ->
