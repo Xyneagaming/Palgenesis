@@ -48,14 +48,18 @@ visual rule "evolved forms keep the base body plan" is cheap: same donor, minima
 
 ## Staged path (each stage shippable)
 
-- **Stage 0 - icon + data row** [DONE 2026-07-29 for both forms]: custom `$resource` icons
-  live (boot-verified "Registered Image Resource"). Extraction is OURS now: **palex**
+- **Stage 0 - icon + data row** [DONE 2026-07-29 for both forms, v2 after Sayber's look
+  review]: icons are RENDERS OF OUR OWN BODIES (recolored-vanilla-icon v1 read as the
+  existing pal - never derive an icon from a vanilla icon). Extraction is OURS: **palex**
   (D:\Nyx\palex, CUE4Parse CLI - list/tex/raw/mesh vs Pal-Windows.pak, 185k files,
-  unencrypted, Mappings.usmap 1.0 from PalworldModding/UsefulFiles). FModel GUI never
-  needed. Recolor dial: vault tools/recolor_foxline.py (HSV band transform; the flame/coat
-  split is by HUE - flames are yellower than coat, v1 shipped a neon fox). Preview proof:
-  recolored body on the real mesh via palex mesh -> glb -> headless Blender
-  (D:\Nyx\palex\out\render\).
+  unencrypted, Mappings.usmap 1.0 from PalworldModding/UsefulFiles). Recolor dial: vault
+  tools/recolor_foxline.py v2 (smoothstep band BLENDING - hard HSV bands posterize; the
+  flame/coat split is by HUE). Preview rig lessons (the "weirdly low quality" fix):
+  **UE normal maps are DirectX-handed - flip green in Blender or everything looks chewed**;
+  force smooth shading; soft sun angles; AgX look. Variant-albedo law: a _Dark/_Ice variant
+  may have its OWN albedo in its OWN folder (AmaterasuWolf_Dark does) - recolor THAT, not
+  the base form's (the base sun-wolf albedo is white/teal; the dark look lives in the
+  variant assets). Preview renders: D:\Nyx\palex\out\render\*_preview2.png.
 - **Stage 1 - true retextured variant** (the PalVariety pattern): one-time UE `Pal` project
   setup; duplicate Foxparks' material instances with recolored textures (keep the vanilla
   parent material so it inherits the game's shader/look), duplicate `BP_Kitsunebi` ->
