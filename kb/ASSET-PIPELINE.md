@@ -60,12 +60,20 @@ visual rule "evolved forms keep the base body plan" is cheap: same donor, minima
   may have its OWN albedo in its OWN folder (AmaterasuWolf_Dark does) - recolor THAT, not
   the base form's (the base sun-wolf albedo is white/teal; the dark look lives in the
   variant assets). Preview renders: D:\Nyx\palex\out\render\*_preview2.png.
-- **Stage 1 - true retextured variant** (the PalVariety pattern): one-time UE `Pal` project
-  setup; duplicate Foxparks' material instances with recolored textures (keep the vanilla
-  parent material so it inherits the game's shader/look), duplicate `BP_Kitsunebi` ->
-  `BP_Foxgloam` under `/Game/Pal/Palgenesis/...`, cook, pak, point BlueprintAssetPath at
-  it. **This single stage validates the whole chain with minimum art risk - do it before
-  any sculpting.**
+- **Stage 1 - custom in-game look [SHIPPED 2026-07-29, loose-file lane]:** body/eye PNGs as
+  PalSchema image resources (`resources/images/`) -> transient UTexture2D -> fork
+  `reskin.lua` finds by name and swaps "Base Texture" on a dynamic material instance per
+  live pal (inherits the game's own MI_PalLit_CharacterBodyBase shader). No pak, no BPs,
+  no PMK/Wwise. Event-armed via NotifyOnNewObject (boot-time poll loops trip the UE4SS
+  callback-GC beside the selftest poll: 3 AV crashes root-caused via the new `-SoakSec`
+  runner instrument - a kill at SELFTEST_DONE outraces the crash window and prints false
+  greens). **PAK LANE PARKED:** the UE 5.1.1 cook + UnrealPak chain works (`ue-cook.ps1`,
+  uncompressed, mount point verified via -List), but its NEW packages are invisible to
+  UE4SS LoadAsset (asset registry never heard of them; vanilla assets load fine) and the
+  Kismet soft-path load chain AV-crashes post-world (struct marshaling). Revisit for mips
+  when a registry-free loader exists (native StaticLoadObject is NOT in the RE-UE4SS
+  wrapper). $resource tradeoff: no mipmaps - acceptable at pal view distances, verify in
+  client.
 - **Stage 2 - kitbash**: sculpt/kitbash the evolution on the imported Foxparks armature,
   transfer weights, cook alongside Stage 1.
 - **Stage 3 - fully new Meshy/Blender mesh** on the closest vanilla skeleton; budget real
