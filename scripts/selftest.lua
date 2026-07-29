@@ -132,6 +132,16 @@ local function runWorldTests(wc)
     -- needs VS2022+Rust+Epic-linked GitHub for the RE-UE4SS tree).
     -- Actor instantiation of custom pals is meanwhile field-proven via the
     -- evolve respawn path (client, 2026-07-28).
+    -- soak/isolation mode: T2's inactive native spawn is a KNOWN
+    -- crash-seconds-later lane on the dedicated server; skip it when the run
+    -- is measuring post-world stability of something else
+    local skipSpawn = nil
+    pcall(function() skipSpawn = os.getenv("PALGENESIS_SKIP_SPAWN") end)
+    if skipSpawn == "1" then
+        Log("SKIP T2/T3 by PALGENESIS_SKIP_SPAWN (stability soak run)")
+        finish("T2/T3 skipped: soak mode")
+        return
+    end
     if type(PalgenesisNative_Spawn) ~= "function" then
         Log("SKIP T2-spawn: needs PalgenesisNative_Spawn (native bridge not built)")
         Log("SKIP T3-spawn-ident: depends on T2")

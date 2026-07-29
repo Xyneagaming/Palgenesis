@@ -110,11 +110,17 @@ end
 -- Runtime reskin (Palgenesis): custom-species looks without cooked BPs.
 -- Dormant until the Stage-1 texture pak is mounted; see reskin.lua.
 do
-    local okRs, rs = pcall(require, "reskin")
-    if okRs and rs and rs.start then
-        pcall(rs.start)
-    elseif not okRs then
-        Log("reskin failed to load: " .. tostring(rs))
+    local disable = nil
+    pcall(function() disable = os.getenv("PALGENESIS_NO_RESKIN") end)
+    if disable == "1" then
+        Log("reskin disabled via PALGENESIS_NO_RESKIN")
+    else
+        local okRs, rs = pcall(require, "reskin")
+        if okRs and rs and rs.start then
+            pcall(rs.start)
+        elseif not okRs then
+            Log("reskin failed to load: " .. tostring(rs))
+        end
     end
 end
 

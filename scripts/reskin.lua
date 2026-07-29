@@ -17,39 +17,58 @@ local function Log(msg)
     print(string.format("[Palvolve] [reskin] %s\n", msg))
 end
 
--- CharacterID -> texture asset paths (body albedo; eye optional)
+-- CharacterID -> texture sources. `res` = PalSchema $resource key fragment
+-- (loose PNG in NyxForms/resources/images, loaded by PalSchema into a
+-- transient UTexture2D - the loose-file lane that needs no pak, no cook, no
+-- registry). `pak` = cooked-asset path, kept as the upgrade lane (mips) once
+-- the pak-load question is solved.
 local SKINS = {
     Foxgloam = {
-        body = "/Game/Pal/Palgenesis/T_Foxgloam_Body_B.T_Foxgloam_Body_B",
-        eye = "/Game/Pal/Palgenesis/T_Foxgloam_Eye_B.T_Foxgloam_Eye_B",
+        body = { res = "foxgloam_body", pak = "/Game/Pal/Palgenesis/T_Foxgloam_Body_B.T_Foxgloam_Body_B" },
+        eye = { res = "foxgloam_eye", pak = "/Game/Pal/Palgenesis/T_Foxgloam_Eye_B.T_Foxgloam_Eye_B" },
     },
     Foxfyre = {
-        body = "/Game/Pal/Palgenesis/T_Foxfyre_Body_B.T_Foxfyre_Body_B",
-        eye = "/Game/Pal/Palgenesis/T_Foxfyre_Eye_B.T_Foxfyre_Eye_B",
+        body = { res = "foxfyre_body", pak = "/Game/Pal/Palgenesis/T_Foxfyre_Body_B.T_Foxfyre_Body_B" },
+        eye = { res = "foxfyre_eye", pak = "/Game/Pal/Palgenesis/T_Foxfyre_Eye_B.T_Foxfyre_Eye_B" },
     },
 }
 
 local texCache = {}
-local function loadTex(path)
-    if texCache[path] ~= nil then return texCache[path] end
-    local tex = nil
+
+-- PalSchema $resource textures are transient UTexture2D objects created from
+-- loose PNGs; find them by scanning loaded textures for the resource key.
+-- (Registration log: "Registered Image Resource 'PalSchema/Resources/NyxForms/<key>'".)
+local function findResourceTex(key)
+    local found = nil
     pcall(function()
-        local obj = StaticFindObject(path)
-        if obj and obj:IsValid() then tex = obj end
+        local all = FindAllOf("Texture2D") or {}
+        for _, t in ipairs(all) do
+            if t and t:IsValid() then
+                local full = tostring(t:GetFullName()):lower()
+                if full:find(key:lower(), 1, true) then found = t break end
+            end
+        end
     end)
-    if not tex then
-        -- not in memory yet: ask the engine to load it (pak-mounted assets
-        -- load on demand)
+    return found
+end
+
+local function loadTex(spec)
+    local ck = spec.res or spec.pak
+    if texCache[ck] ~= nil then return texCache[ck] end
+    local tex = nil
+    -- lane 1: PalSchema resource texture (loose PNG, no pak needed)
+    if spec.res then tex = findResourceTex(spec.res) end
+    -- lane 2: cooked pak asset, if already loaded (StaticFindObject sees only
+    -- LOADED objects). The active loaders both failed here: UE4SS LoadAsset
+    -- resolves via the asset registry (never heard of new mod packages) and
+    -- the Kismet soft-path chain crashed the server (soak matrix 2026-07-29).
+    if not tex and spec.pak then
         pcall(function()
-            local lib = StaticFindObject("/Script/Engine.Default__KismetSystemLibrary")
-            -- LoadAsset needs latent context; fall back to LoadObject via
-            -- FindObject after a StaticLoadObject-style call through
-            -- UObjectGlobals is unavailable in Lua - use LoadAsset_Blocking
-            local obj = LoadAsset(path)
-            if obj and obj.IsValid and obj:IsValid() then tex = obj end
+            local obj = StaticFindObject(spec.pak)
+            if obj and obj:IsValid() then tex = obj end
         end)
     end
-    texCache[path] = tex or false
+    texCache[ck] = tex or false
     return tex
 end
 
@@ -83,17 +102,53 @@ local function applyTo(actor, skins, key)
 end
 
 function M.start()
-    -- pak presence probe: if neither body texture exists, stay dormant
-    local any = false
-    for _, s in pairs(SKINS) do
-        if loadTex(s.body) then any = true end
-    end
-    if not any then
-        Log("no Palgenesis texture pak mounted - reskin dormant (Stage 1 not cooked yet)")
-        return
-    end
-    Log("texture pak found - reskin scan active")
-    LoopAsync(2000, function()
+    -- EVENT-driven world wait, no boot-time polling: every polling variant
+    -- (2s forever-loop, deferred probe, selftest-shaped self-terminating
+    -- poll) AV-crashed the server at boot while running beside the selftest's
+    -- own poll loop - two concurrent boot loops trip the UE4SS callback-GC
+    -- flake ("-4" read; control run with reskin disabled was green,
+    -- 2026-07-29). NotifyOnNewObject fires once per game state construction
+    -- with no loop to collect.
+    local armed = false
+    Log("reskin armed - waiting for world (event)")
+    NotifyOnNewObject("/Script/Pal.PalGameStateInGame", function(_)
+        if armed then return end
+        armed = true
+        ExecuteWithDelay(5000, function()
+            ExecuteInGameThread(function()
+                pcall(function()
+                    local any = false
+                    for _, s in pairs(SKINS) do
+                        if loadTex(s.body) then any = true end
+                    end
+                    if any then
+                        Log("texture pak found - reskin scan active")
+                        M.armScan()
+                    else
+                        -- diagnostic: list what PalSchema resource textures DO exist
+                        local names = {}
+                        pcall(function()
+                            local all = FindAllOf("Texture2D") or {}
+                            for _, t in ipairs(all) do
+                                if t and t:IsValid() then
+                                    local full = tostring(t:GetFullName())
+                                    if full:lower():find("palschema", 1, true) or full:lower():find("fox", 1, true) then
+                                        names[#names + 1] = full
+                                    end
+                                end
+                            end
+                        end)
+                        Log("no reskin textures found - dormant. PalSchema/fox textures in memory: "
+                            .. (#names > 0 and table.concat(names, " | ") or "(none)"))
+                    end
+                end)
+            end)
+        end)
+    end)
+end
+
+function M.armScan()
+    LoopAsync(2500, function()
         ExecuteInGameThread(function()
             pcall(function()
                 local pals = FindAllOf("PalCharacter") or {}
