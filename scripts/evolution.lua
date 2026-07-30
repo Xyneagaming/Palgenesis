@@ -2538,6 +2538,13 @@ function Evolution.init()
                 local okProbes, probes = pcall(require, "probes")
                 if okProbes and probes.becomePal then probes.becomePal(senderCtx, args) end
             end,
+            -- !pg reskin: force-apply custom-species skins to live pals and
+            -- report counts in chat (the one-liner client field test)
+            reskin = function(senderCtx)
+                if not Config.devMode then return end
+                local okRs, rs = pcall(require, "reskin")
+                if okRs and rs.report then rs.report(senderCtx) end
+            end,
             -- !pg moves: backfill the summoned pal's species moves up to its
             -- level (evolved pals keep only their old form's kit otherwise)
             moves = function(senderCtx)

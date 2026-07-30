@@ -74,7 +74,7 @@ end
 
 local seen = {}
 
-local function applyTo(actor, skins, key)
+local function applyTo(actor, skins, key, key0)
     local mesh = nil
     pcall(function() mesh = actor.Mesh end)
     if not (mesh and mesh:IsValid()) then return false end
@@ -97,7 +97,10 @@ local function applyTo(actor, skins, key)
             end
         end
     end)
-    if ok then seen[key] = true end
+    if ok then
+        seen[key] = true
+        Log(string.format("applied %s skin to %s", key0 or "?", tostring(actor:GetFullName())))
+    end
     return ok
 end
 
@@ -162,13 +165,50 @@ function M.armScan()
                         local skins = SKINS[id]
                         if skins then
                             local key = tostring(actor:GetFullName())
-                            if not seen[key] then applyTo(actor, skins, key) end
+                            if not seen[key] then applyTo(actor, skins, key, id) end
                         end
                     end
                 end
             end)
         end)
         return false
+    end)
+end
+
+-- !pg reskin: force-apply to every live custom-species pal RIGHT NOW and
+-- report counts in chat - makes the client field test a one-liner. Clears
+-- the seen-set first so it re-applies even to already-touched actors.
+function M.report(senderCtx)
+    local Role = require("role")
+    ExecuteInGameThread(function()
+        local okRun, err = pcall(function()
+            seen = {}
+            local found, applied, texOk = 0, 0, 0
+            for _, s in pairs(SKINS) do
+                if loadTex(s.body) then texOk = texOk + 1 end
+            end
+            local pals = FindAllOf("PalCharacter") or {}
+            for _, actor in ipairs(pals) do
+                if actor and actor:IsValid() then
+                    local id = ""
+                    pcall(function()
+                        local p = actor:GetParameterComponent().IndividualParameter
+                        id = p:GetCharacterID():ToString()
+                    end)
+                    local skins = SKINS[id]
+                    if skins then
+                        found = found + 1
+                        if applyTo(actor, skins, tostring(actor:GetFullName()), id) then
+                            applied = applied + 1
+                        end
+                    end
+                end
+            end
+            Role.ack(senderCtx, string.format(
+                "reskin: %d/2 texture sets loaded, %d custom pals in world, %d reskinned",
+                texOk, found, applied))
+        end)
+        if not okRun then Log("report FAIL: " .. tostring(err)) end
     end)
 end
 
