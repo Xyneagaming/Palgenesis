@@ -151,23 +151,35 @@ function M.start()
 end
 
 function M.armScan()
+    local diagOnce = true
     LoopAsync(2500, function()
         ExecuteInGameThread(function()
             pcall(function()
                 local pals = FindAllOf("PalCharacter") or {}
+                local ids = {}
                 for _, actor in ipairs(pals) do
                     if actor and actor:IsValid() then
                         local id = ""
                         pcall(function()
-                            local p = actor:GetParameterComponent().IndividualParameter
+                            -- the proven accessor (paramOf in evolution.lua);
+                            -- v1 used an invented GetParameterComponent() and
+                            -- the pcall ate the error every tick - a live
+                            -- Foxgloam sat unskinned for minutes (2026-07-30)
+                            local p = actor.CharacterParameterComponent:GetIndividualParameter()
                             id = p:GetCharacterID():ToString()
                         end)
+                        if diagOnce and id ~= "" then ids[#ids + 1] = id end
                         local skins = SKINS[id]
                         if skins then
                             local key = tostring(actor:GetFullName())
                             if not seen[key] then applyTo(actor, skins, key, id) end
                         end
                     end
+                end
+                if diagOnce and #pals > 0 then
+                    diagOnce = false
+                    Log(string.format("scan diag: %d PalCharacters, ids readable: %d [%s]",
+                        #pals, #ids, table.concat(ids, ",", 1, math.min(#ids, 8))))
                 end
             end)
         end)
@@ -192,7 +204,7 @@ function M.report(senderCtx)
                 if actor and actor:IsValid() then
                     local id = ""
                     pcall(function()
-                        local p = actor:GetParameterComponent().IndividualParameter
+                        local p = actor.CharacterParameterComponent:GetIndividualParameter()
                         id = p:GetCharacterID():ToString()
                     end)
                     local skins = SKINS[id]
