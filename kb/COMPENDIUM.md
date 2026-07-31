@@ -68,13 +68,15 @@ Any evolved-form breeding rule must be checked against this table, not the wiki 
 | Kitsunebi_Ice | Foxparks Cryst | Ice | 65/70/80/70 | XS quadruped | no | variant convention |
 | CuteFox | Vixy | Neutral | 70/70/70/70 | XS quadruped | no | |
 | WoolFox | Cremis | Neutral | 70/100/70/75 | XS quadruped | no | |
-| **NightFox** | Nox | **Dark** | **75/70/85/70** | **XS quadruped** | **yes** | **nearest neighbor: mono-Dark nocturnal fox** |
+| **NightFox** | (dark fox, EN name unconfirmed) | **Dark** | **75/70/85/70** | **XS quadruped** | **yes** | **nearest neighbor: mono-Dark nocturnal fox** |
 | IceFox | Foxcicle | Ice | 90/100/95/105 | S quadruped | no | |
 | FoxMage | Wixen | Fire | 90/50/110/80 | M humanoid | no | the fire-kitsune witch |
 | FoxMage_Dark | Wixen Noct | Fire/Dark | 90/50/110/85 | M humanoid | yes | |
 | DarkFlameFox | (1.0) | Dark/Fire | 110/100/115/90 | M humanoid | yes | dark-fire kitsune, r5 |
 | FoxExorcist | (1.0) | Fire | 110/100/125/105 | M humanoid | no | r7 endgame kitsune |
-| Foxgloam | ours | Dark | 75/75/90/75 | XS quadruped | yes | z5C, combi 1390 |
+| Foxgloam | ours | Dark | 80/75/100/80 | XS quadruped | yes | z5C |
+
+**INTERNAL->ENGLISH NAME LAW (added 2026-07-30 after the AmaterasuWolf mislabel):** never map internal row names to English pal names by inference - AmaterasuWolf_Dark was labeled 'Blazehowl Noct' here for a full day and Foxfyre shipped on the wrong body (it is KITSUN NOCT, identified by Sayber in-game; the real Blazehowl = Manticore, Blazehowl Noct = Manticore_Dark, confirmed by trait triangulation + field eyes). English names come from Sayber's in-game identification or a verified icon match, never from mythology vibes.
 
 **Differentiation verdict (Sayber's flag, answered with data):** the humanoid kitsune lane
 (Wixen, Wixen Noct, DarkFlameFox, FoxExorcist) is crowded but orthogonal - Foxgloam stays a
