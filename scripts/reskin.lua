@@ -22,14 +22,22 @@ end
 -- transient UTexture2D - the loose-file lane that needs no pak, no cook, no
 -- registry). `pak` = cooked-asset path, kept as the upgrade lane (mips) once
 -- the pak-load question is solved.
+-- Eyes are NEVER touched: recolored eye sheets blotted the eyes out in the
+-- field (Sayber 2026-07-30); vanilla eyes stay (Foxparks' are already
+-- ember-orange, which IS the brief). `flame` = vector color params for
+-- M_Pal_Fire-family slots (the wolf's procedural mane): Foxfyre burns COLD -
+-- spectral blue-white ghost-fire, vs vanilla fire=orange and Noct=purple.
 local SKINS = {
     Foxgloam = {
         body = { res = "foxgloam_body", pak = "/Game/Pal/Palgenesis/T_Foxgloam_Body_B.T_Foxgloam_Body_B" },
-        eye = { res = "foxgloam_eye", pak = "/Game/Pal/Palgenesis/T_Foxgloam_Eye_B.T_Foxgloam_Eye_B" },
     },
     Foxfyre = {
         body = { res = "foxfyre_body", pak = "/Game/Pal/Palgenesis/T_Foxfyre_Body_B.T_Foxfyre_Body_B" },
-        eye = { res = "foxfyre_eye", pak = "/Game/Pal/Palgenesis/T_Foxfyre_Eye_B.T_Foxfyre_Eye_B" },
+        flame = {
+            Color1 = { R = 8.0, G = 30.0, B = 40.0, A = 1.0 },   -- bright spectral cyan core
+            Color2 = { R = 0.4, G = 2.0, B = 3.2, A = 1.0 },    -- mid glow
+            Color3 = { R = 0.2, G = 0.6, B = 1.4, A = 1.0 },    -- cool blue falloff
+        },
     },
 }
 
@@ -85,13 +93,47 @@ local function applyTo(actor, skins, key, key0)
             local cur = mesh:GetMaterial(i)
             if cur and cur:IsValid() then
                 local name = cur:GetFullName():lower()
-                local texPath = name:find("eye") and skins.eye or skins.body
-                local tex = loadTex(texPath)
-                if tex then
-                    local mid = mesh:CreateDynamicMaterialInstance(i, cur, FName("NONE"))
-                    if mid and mid:IsValid() then
-                        mid:SetTextureParameterValue(FName("Base Texture"), tex)
-                        ok = true
+                if name:find("eye") then
+                    -- eyes are sacred: never retexture, never UMID
+                elseif name:find("fire") or name:find("extra") then
+                    -- procedural flame slots (M_Pal_Fire family): recolor via
+                    -- vector params when the skin defines a cold-fire palette
+                    if skins.flame then
+                        local mid = mesh:CreateDynamicMaterialInstance(i, cur, FName("NONE"))
+                        if mid and mid:IsValid() then
+                            for pname, c in pairs(skins.flame) do
+                                pcall(function() mid:SetVectorParameterValue(FName(pname), c) end)
+                            end
+                            ok = true
+                        end
+                    end
+                elseif name:find("materialinstancedynamic") then
+                    -- already ours (a !pg reskin re-run): route by the UMID's
+                    -- PARENT material, the slot origin the dynamic name hides
+                    local pname = ""
+                    pcall(function() pname = cur.Parent:GetFullName():lower() end)
+                    if pname:find("fire") or pname:find("extra") then
+                        if skins.flame then
+                            for k, c in pairs(skins.flame) do
+                                pcall(function() cur:SetVectorParameterValue(FName(k), c) end)
+                            end
+                            ok = true
+                        end
+                    elseif not pname:find("eye") then
+                        local tex = loadTex(skins.body)
+                        if tex then
+                            pcall(function() cur:SetTextureParameterValue(FName("Base Texture"), tex) end)
+                            ok = true
+                        end
+                    end
+                else
+                    local tex = loadTex(skins.body)
+                    if tex then
+                        local mid = mesh:CreateDynamicMaterialInstance(i, cur, FName("NONE"))
+                        if mid and mid:IsValid() then
+                            mid:SetTextureParameterValue(FName("Base Texture"), tex)
+                            ok = true
+                        end
                     end
                 end
             end
